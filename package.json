@@ -7,8 +7,10 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder --win portable",
     "build:sidecar": "pwsh scripts/build-sidecar.ps1",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
+    "rebuild:node": "pnpm rebuild better-sqlite3",
+    "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
+    "test": "pnpm run rebuild:node && vitest run",
+    "test:e2e": "pnpm run rebuild:electron && electron-vite build && playwright test",
     "test:py": "cd python && pytest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "fetch-bins": "pwsh scripts/fetch-binaries.ps1"
