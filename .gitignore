@@ -12,6 +12,7 @@ release/
 
 # bundled binaries (fetched separately)
 resources/bin/*.exe
+resources/bin/exiftool_files/
 
 # local state
 .env.local
