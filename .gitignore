@@ -17,6 +17,7 @@ resources/bin/exiftool_files/
 # local state
 .env.local
 *.log
+test-results/
 
 # IDE
 .vscode/

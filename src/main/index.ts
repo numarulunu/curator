@@ -23,7 +23,7 @@ function createWindow(): void {
     win.loadFile(join(__dirname, "../renderer/index.html"));
   }
 
-  if (!app.isPackaged) win.webContents.openDevTools({ mode: "detach" });
+  if (!app.isPackaged && !process.env.CURATOR_E2E) win.webContents.openDevTools({ mode: "detach" });
 }
 
 ipcMain.handle("curator:getVersion", (): AppVersion => ({
