@@ -1,9 +1,13 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import type { AppVersion, SidecarVersion } from "@shared/types";
 import { Sidecar } from "./sidecar";
+import { resolveCuratorStateDir } from "./paths";
+import { openDb, runMigrations } from "./db";
 
 let sidecar: Sidecar | null = null;
+let db: Database.Database | null = null;
 
 function resolveSidecar(): Sidecar {
   if (app.isPackaged) {
@@ -44,12 +48,17 @@ ipcMain.handle("curator:ping", async (): Promise<boolean> => {
 });
 
 app.whenReady().then(async () => {
+  const stateDir = resolveCuratorStateDir();
+  const dbPath = join(stateDir, "index.db");
+  db = openDb(dbPath);
+  runMigrations(db);
   sidecar = resolveSidecar();
-  await sidecar.start();
+  await sidecar.start({ DB_PATH: dbPath });
   createWindow();
 });
 
 app.on("window-all-closed", async () => {
   if (sidecar) { await sidecar.close(); sidecar = null; }
+  if (db) { db.close(); db = null; }
   if (process.platform !== "darwin") app.quit();
 });

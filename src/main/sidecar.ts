@@ -24,7 +24,7 @@ export class Sidecar {
 
   constructor(private readonly opts: SidecarOptions) {}
 
-  async start(readyTimeoutMs: number = DEFAULT_READY_TIMEOUT_MS): Promise<void> {
+  async start(extraEnv: NodeJS.ProcessEnv = {}, readyTimeoutMs: number = DEFAULT_READY_TIMEOUT_MS): Promise<void> {
     if (this.proc) return;
     return new Promise<void>((resolve, reject) => {
       let settled = false;
@@ -35,6 +35,7 @@ export class Sidecar {
         env: {
           ...process.env,
           ...(this.opts.env ?? {}),
+          ...extraEnv,
           PYTHONIOENCODING: "utf-8",
           PYTHONUNBUFFERED: "1",
         },
