@@ -1,0 +1,25 @@
+# deps
+node_modules/
+python/.venv/
+python/**/__pycache__/
+*.egg-info/
+
+# build
+out/
+dist/
+release/
+*.spec
+
+# bundled binaries (fetched separately)
+resources/bin/*.exe
+
+# local state
+.env.local
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
