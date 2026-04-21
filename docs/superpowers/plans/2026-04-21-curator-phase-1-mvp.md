@@ -812,11 +812,22 @@ function Fetch-Zip($url, $innerExe, $outExe) {
   $src = Get-ChildItem -Path $extract -Recurse -Filter $innerExe | Select-Object -First 1
   if (-not $src) { throw "$innerExe not found in $url" }
   Copy-Item -Path $src.FullName -Destination (Join-Path $bin $outExe) -Force
+  # exiftool Windows distro ships with an `exiftool_files/` Perl-runtime sidecar
+  # directory. The renamed .exe loader fails with "Could not find perl5*.dll"
+  # without it, so copy the sidecar when present.
+  $support = Join-Path $src.Directory.FullName "exiftool_files"
+  if (Test-Path $support) {
+    $dest = Join-Path $bin "exiftool_files"
+    if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+    Copy-Item -Path $support -Destination $dest -Recurse -Force
+  }
   Remove-Item -Recurse -Force $extract, $zip
 }
 
 Write-Host "Fetching exiftool..."
-Fetch-Zip "https://exiftool.org/exiftool-13.00_64.zip" "exiftool(-k).exe" "exiftool.exe"
+# Pin to a specific version — exiftool.org rotates old versions off the root,
+# so the URL needs periodic refresh. Check https://exiftool.org/ for current.
+Fetch-Zip "https://exiftool.org/exiftool-13.57_64.zip" "exiftool(-k).exe" "exiftool.exe"
 
 Write-Host "Fetching ffmpeg (includes ffprobe)..."
 $ffmpegUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
