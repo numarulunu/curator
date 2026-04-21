@@ -246,6 +246,13 @@ cd /d/curator && git add .gitignore .editorconfig README.md && git commit -m "ch
     "vite": "5.4.3",
     "vitest": "2.0.5"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild"
+    ]
+  },
   "build": {
     "appId": "com.ionut.curator",
     "productName": "Curator",
