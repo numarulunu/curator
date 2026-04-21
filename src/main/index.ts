@@ -10,9 +10,11 @@ function resolveSidecar(): Sidecar {
     const exe = join(process.resourcesPath, "sidecar", "curator-sidecar.exe");
     return new Sidecar({ python: exe, cwd: join(process.resourcesPath, "sidecar"), args: [] });
   }
+  // In dev + e2e, __dirname is `<repo>/out/main/`. Navigate up twice to reach the repo root.
+  const repoRoot = join(__dirname, "..", "..");
   return new Sidecar({
-    python: join(app.getAppPath(), "python", ".venv", "Scripts", "python.exe"),
-    cwd: join(app.getAppPath(), "python"),
+    python: join(repoRoot, "python", ".venv", "Scripts", "python.exe"),
+    cwd: join(repoRoot, "python"),
     args: ["-m", "curator"],
   });
 }
