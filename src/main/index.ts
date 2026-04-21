@@ -53,7 +53,10 @@ app.whenReady().then(async () => {
   db = openDb(dbPath);
   runMigrations(db);
   sidecar = resolveSidecar();
-  await sidecar.start({ DB_PATH: dbPath });
+  const binDir = app.isPackaged
+    ? join(process.resourcesPath, "bin")
+    : join(__dirname, "..", "..", "resources", "bin");
+  await sidecar.start({ DB_PATH: dbPath, CURATOR_BIN_DIR: binDir });
   createWindow();
 });
 
