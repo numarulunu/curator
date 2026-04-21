@@ -1568,7 +1568,6 @@ const MIGRATIONS: Array<{ id: number; sql: string }> = [
   {
     id: 1,
     sql: `
-      CREATE TABLE migrations (id INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
       CREATE TABLE files (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         path            TEXT    NOT NULL UNIQUE,
