@@ -1,19 +1,27 @@
-import { useEffect, useState } from "react";
-import type { AppVersion } from "@shared/types";
+import { HashRouter, Route, Routes } from "react-router-dom";
+import { Sidebar } from "./components/Sidebar";
+import { Dashboard } from "./routes/Dashboard";
+
+function Placeholder({ title }: { title: string }): JSX.Element {
+  return <div className="p-8"><h1 className="text-3xl font-semibold tracking-tight">{title}</h1></div>;
+}
 
 export default function App(): JSX.Element {
-  const [ver, setVer] = useState<AppVersion | null>(null);
-
-  useEffect(() => {
-    window.curator.getVersion().then(setVer);
-  }, []);
-
   return (
-    <div className="min-h-screen p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Curator</h1>
-      <p className="text-muted-foreground mt-2">
-        {ver ? `Electron ${ver.electron} • Node ${ver.node}` : "Loading..."}
-      </p>
-    </div>
+    <HashRouter>
+      <div className="flex h-screen">
+        <Sidebar />
+        <main className="flex-1 overflow-auto">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/duplicates-exact" element={<Placeholder title="Exact duplicates" />} />
+            <Route path="/misplaced" element={<Placeholder title="Misplaced by date" />} />
+            <Route path="/zero-byte" element={<Placeholder title="Zero-byte" />} />
+            <Route path="/apply" element={<Placeholder title="Apply" />} />
+            <Route path="/sessions" element={<Placeholder title="Sessions" />} />
+          </Routes>
+        </main>
+      </div>
+    </HashRouter>
   );
 }

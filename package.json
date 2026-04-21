@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "better-sqlite3": "11.3.0",
+    "react-router-dom": "6.26.2",
     "zod": "3.23.8"
   },
   "devDependencies": {
@@ -46,13 +47,34 @@
   "build": {
     "appId": "com.ionut.curator",
     "productName": "Curator",
-    "directories": { "output": "release" },
-    "files": ["out/**/*", "resources/**/*"],
-    "extraResources": [
-      { "from": "resources/bin", "to": "bin", "filter": ["**/*"] },
-      { "from": "dist-sidecar", "to": "sidecar", "filter": ["**/*"] }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*"
     ],
-    "win": { "target": "portable" },
-    "portable": { "artifactName": "Curator-portable.exe" }
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "dist-sidecar",
+        "to": "sidecar",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "Curator-portable.exe"
+    }
   }
 }
