@@ -31,3 +31,11 @@ from curator import scan as _scan
 @register("scan")
 def _scan_handler(params: dict) -> dict:
     return _scan.scan(params["root"], params.get("batch_size", 500))
+
+
+from curator import hashall as _hashall
+
+
+@register("hashAll")
+def _hashall_handler(params: dict) -> dict:
+    return _hashall.hash_all(params.get("batch_size", 200))
