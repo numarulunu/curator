@@ -23,3 +23,11 @@ def binaries(_params):
         "ffprobe":  resolve_bin("ffprobe.exe"),
         "ffmpeg":   resolve_bin("ffmpeg.exe"),
     }
+
+
+from curator import scan as _scan
+
+
+@register("scan")
+def _scan_handler(params: dict) -> dict:
+    return _scan.scan(params["root"], params.get("batch_size", 500))
