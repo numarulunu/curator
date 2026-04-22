@@ -9,6 +9,8 @@ const api: CuratorApi = {
   scan: (root: string) => ipcRenderer.invoke("curator:scan", root),
   hashAll: () => ipcRenderer.invoke("curator:hashAll"),
   duplicatesExact: () => ipcRenderer.invoke("curator:duplicatesExact"),
+  resolveDates: () => ipcRenderer.invoke("curator:resolveDates"),
+  listMisplaced: () => ipcRenderer.invoke("curator:listMisplaced"),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);
