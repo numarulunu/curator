@@ -23,13 +23,20 @@ Perceptual dedup, Motion Photo detection, burst detection, screenshot detection,
     cd python && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
     cd .. && pnpm run dev
 
-## Build portable .exe
+## Build Windows installer
 
     pnpm run fetch-bins
     pnpm run build:sidecar
     pnpm run build
 
-Output: `release/Curator-portable.exe`.
+Output: `release/Curator-Setup-0.1.1.exe` plus `latest.yml` for auto-update publishing.
+
+## Auto updates
+
+- Installed builds check GitHub Releases on startup
+- Updates download automatically in the background
+- The downloaded update installs automatically when the app quits
+- Set `CURATOR_DISABLE_AUTO_UPDATE=1` to skip updater checks for a run
 
 ## State locations
 

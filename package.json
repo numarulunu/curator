@@ -1,11 +1,12 @@
 {
   "name": "curator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Archive Curator â€” dedup + reorg tool",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build && electron-builder --win portable",
+    "build": "electron-vite build && electron-builder --win nsis",
+    "build:portable": "electron-vite build && electron-builder --win portable",
     "build:sidecar": "powershell -ExecutionPolicy Bypass -File scripts/build-sidecar.ps1",
     "rebuild:node": "pnpm rebuild better-sqlite3",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
@@ -13,14 +14,17 @@
     "test:e2e": "pnpm run rebuild:electron && electron-vite build && playwright test",
     "test:py": "cd python && pytest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "fetch-bins": "powershell -ExecutionPolicy Bypass -File scripts/fetch-binaries.ps1"
+    "fetch-bins": "powershell -ExecutionPolicy Bypass -File scripts/fetch-binaries.ps1",
+    "release:win": "electron-vite build && electron-builder --win nsis --publish always"
   },
   "dependencies": {
     "better-sqlite3": "11.3.0",
+    "electron-updater": "^6.8.3",
     "react-router-dom": "6.26.2",
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "@playwright/test": "1.47.0",
     "@types/better-sqlite3": "7.6.11",
     "@types/node": "22.5.4",
@@ -73,12 +77,32 @@
         ]
       }
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "numarulunu",
+        "repo": "curator",
+        "releaseType": "release"
+      }
+    ],
     "win": {
-      "target": "portable"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "Curator-Setup-${version}.exe",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
     },
     "portable": {
       "artifactName": "Curator-portable.exe"
     }
   }
 }
-

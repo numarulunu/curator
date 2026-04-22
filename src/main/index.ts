@@ -1,4 +1,5 @@
 ﻿import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { autoUpdater } from "electron-updater";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -23,6 +24,7 @@ import {
   type ZeroByteFile,
 } from "./queries";
 import { Sidecar } from "./sidecar";
+import { createUpdaterLogger, startAutoUpdater } from "./updater";
 
 let sidecar: Sidecar | null = null;
 let db: Database.Database | null = null;
@@ -146,6 +148,13 @@ app.whenReady().then(async () => {
     if (win && !win.isDestroyed()) win.webContents.send("curator:event", params);
   });
   createWindow();
+  void startAutoUpdater(autoUpdater, {
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+    isE2E: Boolean(process.env.CURATOR_E2E),
+    disabled: process.env.CURATOR_DISABLE_AUTO_UPDATE === "1",
+    logger: createUpdaterLogger(join(stateDir, "_updater.log")),
+  });
 });
 
 app.on("window-all-closed", async () => {
