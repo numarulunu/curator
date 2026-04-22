@@ -39,3 +39,11 @@ from curator import hashall as _hashall
 @register("hashAll")
 def _hashall_handler(params: dict) -> dict:
     return _hashall.hash_all(params.get("batch_size", 200))
+
+
+from curator import clusters as _clusters
+
+
+@register("duplicatesExact")
+def _duplicates_exact_handler(_params: dict) -> list:
+    return _clusters.duplicates_exact()
