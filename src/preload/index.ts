@@ -11,6 +11,7 @@ const api: CuratorApi = {
   duplicatesExact: () => ipcRenderer.invoke("curator:duplicatesExact"),
   resolveDates: () => ipcRenderer.invoke("curator:resolveDates"),
   listMisplaced: () => ipcRenderer.invoke("curator:listMisplaced"),
+  listZeroByte: () => ipcRenderer.invoke("curator:listZeroByte"),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);

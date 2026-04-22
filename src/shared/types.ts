@@ -10,6 +10,7 @@ export interface MisplacedFile {
   canonical_date: string; date_source: string;
   folder_year: number; canonical_year: number;
 }
+export interface ZeroByteFile { id: number; path: string }
 
 export interface CuratorApi {
   getVersion: () => Promise<AppVersion>;
@@ -21,6 +22,7 @@ export interface CuratorApi {
   duplicatesExact: () => Promise<DuplicateCluster[]>;
   resolveDates: () => Promise<ResolveDatesResult>;
   listMisplaced: () => Promise<MisplacedFile[]>;
+  listZeroByte: () => Promise<ZeroByteFile[]>;
   onEvent: (listener: (params: { kind: string; [k: string]: unknown }) => void) => () => void;
 }
 

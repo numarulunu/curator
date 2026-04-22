@@ -32,3 +32,17 @@ export function listMisplacedByDate(db: Database.Database): MisplacedFile[] {
   }
   return out;
 }
+
+export interface ZeroByteFile {
+  id: number;
+  path: string;
+}
+
+export function listZeroByte(db: Database.Database): ZeroByteFile[] {
+  return db.prepare(`
+    SELECT id, path
+      FROM files
+     WHERE size = 0
+  ORDER BY path
+  `).all() as ZeroByteFile[];
+}

@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./routes/Dashboard";
 import { DuplicatesExact } from "./routes/DuplicatesExact";
 import { MisplacedByDate } from "./routes/MisplacedByDate";
+import { ZeroByte } from "./routes/ZeroByte";
 
 function Placeholder({ title }: { title: string }): JSX.Element {
   return <div className="p-8"><h1 className="text-3xl font-semibold tracking-tight">{title}</h1></div>;
@@ -18,7 +19,7 @@ export default function App(): JSX.Element {
             <Route path="/" element={<Dashboard />} />
             <Route path="/duplicates-exact" element={<DuplicatesExact />} />
             <Route path="/misplaced" element={<MisplacedByDate />} />
-            <Route path="/zero-byte" element={<Placeholder title="Zero-byte" />} />
+            <Route path="/zero-byte" element={<ZeroByte />} />
             <Route path="/apply" element={<Placeholder title="Apply" />} />
             <Route path="/sessions" element={<Placeholder title="Sessions" />} />
           </Routes>

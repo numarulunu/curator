@@ -5,7 +5,7 @@ import type { AppVersion, DuplicateCluster, HashAllResult, ScanResult, SidecarVe
 import { Sidecar } from "./sidecar";
 import { resolveCuratorStateDir } from "./paths";
 import { openDb, runMigrations } from "./db";
-import { listMisplacedByDate, type MisplacedFile } from "./queries";
+import { listMisplacedByDate, listZeroByte, type MisplacedFile, type ZeroByteFile } from "./queries";
 
 let sidecar: Sidecar | null = null;
 let db: Database.Database | null = null;
@@ -66,6 +66,7 @@ ipcMain.handle("curator:duplicatesExact", async (): Promise<DuplicateCluster[]> 
 });
 ipcMain.handle("curator:resolveDates", async () => sidecar!.call<{ resolved: number }>("resolveDates", {}));
 ipcMain.handle("curator:listMisplaced", (): MisplacedFile[] => listMisplacedByDate(db!));
+ipcMain.handle("curator:listZeroByte", (): ZeroByteFile[] => listZeroByte(db!));
 
 app.whenReady().then(async () => {
   const stateDir = resolveCuratorStateDir();
