@@ -8,6 +8,7 @@ export interface CuratorApi {
   ping: () => Promise<boolean>;
   pickFolder: () => Promise<string | null>;
   scan: (root: string) => Promise<ScanResult>;
+  onEvent: (listener: (params: { kind: string; [k: string]: unknown }) => void) => () => void;
 }
 
 declare global {

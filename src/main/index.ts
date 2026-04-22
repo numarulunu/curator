@@ -8,6 +8,7 @@ import { openDb, runMigrations } from "./db";
 
 let sidecar: Sidecar | null = null;
 let db: Database.Database | null = null;
+let mainWindow: BrowserWindow | null = null;
 
 function resolveSidecar(): Sidecar {
   if (app.isPackaged) {
@@ -31,6 +32,8 @@ function createWindow(): void {
       contextIsolation: true, nodeIntegration: false, sandbox: false,
     },
   });
+  mainWindow = win;
+  win.on("closed", () => { if (mainWindow === win) mainWindow = null; });
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else win.loadFile(join(__dirname, "../renderer/index.html"));
   if (!app.isPackaged && !process.env.CURATOR_E2E) win.webContents.openDevTools({ mode: "detach" });
@@ -65,6 +68,10 @@ app.whenReady().then(async () => {
     ? join(process.resourcesPath, "bin")
     : join(__dirname, "..", "..", "resources", "bin");
   await sidecar.start({ DB_PATH: dbPath, CURATOR_BIN_DIR: binDir });
+  sidecar.on("event", (params) => {
+    const win = mainWindow;
+    if (win && !win.isDestroyed()) win.webContents.send("curator:event", params);
+  });
   createWindow();
 });
 

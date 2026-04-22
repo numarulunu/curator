@@ -32,6 +32,16 @@ def dispatch(req: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
+def emit_event(kind: str, **payload) -> None:
+    """Write a JSON-RPC notification line (no id) to stdout and flush.
+
+    Used for unsolicited one-way events from sidecar → client.
+    """
+    msg = {"jsonrpc": "2.0", "method": "event", "params": {"kind": kind, **payload}}
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+
+
 def serve_stdio() -> None:
     # Line-delimited JSON. One request per line; one response per line.
     for line in sys.stdin:

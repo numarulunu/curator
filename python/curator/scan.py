@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import List
 
 from curator.db import connect
+from curator.rpc import emit_event
 from curator.walker import WalkedFile, walk
 
 
@@ -50,10 +51,12 @@ def scan(root: str, batch_size: int = 500) -> dict:
                 _flush(conn, batch)
                 total += len(batch)
                 batch = []
+                emit_event("scan.progress", scanned=total, root=root)
         if batch:
             _flush(conn, batch)
             total += len(batch)
     finally:
         conn.close()
 
+    emit_event("scan.progress", scanned=total, root=root)
     return {"scanned": total, "root": root}

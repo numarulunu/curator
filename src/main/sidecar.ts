@@ -1,4 +1,5 @@
 import { spawn, ChildProcessWithoutNullStreams } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { createInterface, Interface } from "node:readline";
 
 export interface SidecarOptions {
@@ -15,14 +16,22 @@ interface Pending {
 
 const DEFAULT_READY_TIMEOUT_MS = 15_000;
 
-export class Sidecar {
+export class Sidecar extends EventEmitter {
   private proc: ChildProcessWithoutNullStreams | null = null;
   private rl: Interface | null = null;
   private pending = new Map<number, Pending>();
   private nextId = 1;
   private ready = false;
 
-  constructor(private readonly opts: SidecarOptions) {}
+  constructor(private readonly opts: SidecarOptions) {
+    super();
+  }
+
+  on(event: "event", listener: (params: { kind: string; [k: string]: unknown }) => void): this;
+  on(event: string | symbol, listener: (...args: any[]) => void): this;
+  on(event: string | symbol, listener: (...args: any[]) => void): this {
+    return super.on(event, listener);
+  }
 
   async start(extraEnv: NodeJS.ProcessEnv = {}, readyTimeoutMs: number = DEFAULT_READY_TIMEOUT_MS): Promise<void> {
     if (this.proc) return;
@@ -106,9 +115,21 @@ export class Sidecar {
   }
 
   private onLine(line: string): void {
-    let msg: { id?: number; result?: unknown; error?: { code: number; message: string } };
+    let msg: {
+      id?: number | null;
+      method?: string;
+      params?: { kind?: string; [k: string]: unknown };
+      result?: unknown;
+      error?: { code: number; message: string };
+    };
     try { msg = JSON.parse(line); } catch { return; }
-    if (msg.id == null) return;
+    if (msg.id == null) {
+      // Unsolicited event notification. Drop malformed events silently.
+      if (msg.method === "event" && msg.params && typeof msg.params.kind === "string") {
+        this.emit("event", msg.params);
+      }
+      return;
+    }
     const pending = this.pending.get(msg.id);
     if (!pending) return;
     this.pending.delete(msg.id);

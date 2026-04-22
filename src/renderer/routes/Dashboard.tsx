@@ -9,11 +9,21 @@ export function Dashboard(): JSX.Element {
   const [busy, setBusy] = useState<boolean>(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ scanned: number } | null>(null);
 
   useEffect(() => {
     window.curator.getVersion().then(setApp);
     window.curator.getSidecarVersion().then(setPy).catch(() => setPy(null));
     window.curator.ping().then(setOk).catch(() => setOk(false));
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = window.curator.onEvent((params) => {
+      if (params.kind === "scan.progress" && typeof params.scanned === "number") {
+        setProgress({ scanned: params.scanned });
+      }
+    });
+    return unsubscribe;
   }, []);
 
   async function onPickFolder(): Promise<void> {
@@ -30,6 +40,7 @@ export function Dashboard(): JSX.Element {
     setBusy(true);
     setError(null);
     setResult(null);
+    setProgress(null);
     try {
       const r = await window.curator.scan(selectedRoot);
       setResult(r);
@@ -65,7 +76,7 @@ export function Dashboard(): JSX.Element {
             disabled={!selectedRoot || busy}
             className="px-4 py-2 rounded border border-zinc-700 hover:bg-zinc-800 disabled:opacity-50"
           >
-            {busy ? "Scanning…" : "Start scan"}
+            {busy ? (progress ? `Scanning… ${progress.scanned} files so far` : "Scanning…") : "Start scan"}
           </button>
         </div>
         <p className="text-muted-foreground truncate">

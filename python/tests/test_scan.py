@@ -105,3 +105,27 @@ def test_scan_batches_commits(db: Path, tmp_path: Path):
         assert count == 1200
     finally:
         con.close()
+
+
+def test_scan_emits_progress_events_per_batch(db: Path, tmp_path: Path, monkeypatch):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    for i in range(1200):
+        (archive / f"{i:04d}.jpg").write_bytes(b"x")
+
+    captured: list[tuple[str, dict]] = []
+
+    def fake_emit_event(kind: str, **payload) -> None:
+        captured.append((kind, payload))
+
+    monkeypatch.setattr(scan, "emit_event", fake_emit_event)
+
+    result = scan.scan(str(archive), batch_size=500)
+    assert result["scanned"] == 1200
+
+    assert len(captured) >= 3
+    assert all(kind == "scan.progress" for kind, _ in captured)
+    assert captured[-1][1]["scanned"] == 1200
+
+    scanned_values = [payload["scanned"] for _, payload in captured]
+    assert scanned_values == sorted(scanned_values)
