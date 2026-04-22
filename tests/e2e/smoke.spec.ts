@@ -1,4 +1,4 @@
-﻿import { test, expect, _electron as electron } from "@playwright/test";
+import { test, expect, _electron as electron } from "@playwright/test";
 import { existsSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -18,7 +18,7 @@ test("app launches with working sidecar", async () => {
     const win = await app.firstWindow();
     await expect(win.locator("h1")).toHaveText("Curator", { timeout: 10_000 });
     await expect(win.getByText("Sidecar Online")).toBeVisible({ timeout: 10_000 });
-    await expect(win.getByText("Choose an archive to begin")).toBeVisible({ timeout: 10_000 });
+    await expect(win.locator("section").getByText("Choose an archive to begin")).toBeVisible({ timeout: 10_000 });
     await expect(win.getByRole("button", { name: "Select Archive" })).toBeVisible({ timeout: 10_000 });
   } finally {
     await app.close();
