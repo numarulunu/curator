@@ -7,6 +7,8 @@ const api: CuratorApi = {
   ping: () => ipcRenderer.invoke("curator:ping"),
   pickFolder: () => ipcRenderer.invoke("curator:pickFolder"),
   scan: (root: string) => ipcRenderer.invoke("curator:scan", root),
+  hashAll: () => ipcRenderer.invoke("curator:hashAll"),
+  duplicatesExact: () => ipcRenderer.invoke("curator:duplicatesExact"),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);

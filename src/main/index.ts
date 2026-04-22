@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import type { AppVersion, ScanResult, SidecarVersion } from "@shared/types";
+import type { AppVersion, DuplicateCluster, HashAllResult, ScanResult, SidecarVersion } from "@shared/types";
 import { Sidecar } from "./sidecar";
 import { resolveCuratorStateDir } from "./paths";
 import { openDb, runMigrations } from "./db";
@@ -56,6 +56,12 @@ ipcMain.handle("curator:pickFolder", async (): Promise<string | null> => {
 });
 ipcMain.handle("curator:scan", async (_event, root: string): Promise<ScanResult> => {
   return await sidecar!.call<ScanResult>("scan", { root });
+});
+ipcMain.handle("curator:hashAll", async (): Promise<HashAllResult> => {
+  return await sidecar!.call<HashAllResult>("hashAll", {});
+});
+ipcMain.handle("curator:duplicatesExact", async (): Promise<DuplicateCluster[]> => {
+  return await sidecar!.call<DuplicateCluster[]>("duplicatesExact", {});
 });
 
 app.whenReady().then(async () => {
