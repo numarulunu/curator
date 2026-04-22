@@ -33,8 +33,10 @@ export function Dashboard(): JSX.Element {
     try {
       const r = await window.curator.scan(selectedRoot);
       setResult(r);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : String(e);
+      const clean = raw.replace(/^Error invoking remote method '[^']+':\s*/, "");
+      setError(clean);
     } finally {
       setBusy(false);
     }
