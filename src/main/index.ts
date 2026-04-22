@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import type { AppVersion, SidecarVersion } from "@shared/types";
+import type { AppVersion, ScanResult, SidecarVersion } from "@shared/types";
 import { Sidecar } from "./sidecar";
 import { resolveCuratorStateDir } from "./paths";
 import { openDb, runMigrations } from "./db";
@@ -45,6 +45,14 @@ ipcMain.handle("curator:getSidecarVersion", async (): Promise<SidecarVersion> =>
 ipcMain.handle("curator:ping", async (): Promise<boolean> => {
   const r = await sidecar!.call<{ pong: boolean }>("ping", {});
   return r.pong;
+});
+ipcMain.handle("curator:pickFolder", async (): Promise<string | null> => {
+  const r = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+  if (r.canceled || r.filePaths.length === 0) return null;
+  return r.filePaths[0];
+});
+ipcMain.handle("curator:scan", async (_event, root: string): Promise<ScanResult> => {
+  return await sidecar!.call<ScanResult>("scan", { root });
 });
 
 app.whenReady().then(async () => {
