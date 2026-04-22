@@ -41,7 +41,6 @@ def hash_all(batch_size: int = 200) -> dict:
     conn = connect()
     hashed = 0
     skipped = 0
-    last_emitted = -1
     try:
         rows = conn.execute(
             "SELECT id, path FROM files WHERE xxhash IS NULL ORDER BY id"
@@ -59,28 +58,20 @@ def hash_all(batch_size: int = 200) -> dict:
             if len(batch) >= batch_size:
                 _flush(conn, batch)
                 hashed += len(batch)
-                batch = []
+                batch.clear()
                 emit_event(
                     "hash.progress",
                     hashed=hashed,
                     skipped=skipped,
                     total=total,
                 )
-                last_emitted = hashed
 
         if batch:
             _flush(conn, batch)
             hashed += len(batch)
-            emit_event(
-                "hash.progress",
-                hashed=hashed,
-                skipped=skipped,
-                total=total,
-            )
-            last_emitted = hashed
+            batch.clear()
 
-        # Final event — only if we haven't already emitted for this count.
-        if last_emitted != hashed:
+        if total > 0:
             emit_event(
                 "hash.progress",
                 hashed=hashed,

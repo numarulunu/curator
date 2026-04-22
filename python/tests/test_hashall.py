@@ -4,22 +4,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pytest
-
 from curator import hashall
-from curator.db import connect, ensure_schema
-
-
-@pytest.fixture
-def db(tmp_path: Path, monkeypatch) -> Path:
-    dbp = tmp_path / "test.db"
-    monkeypatch.setenv("DB_PATH", str(dbp))
-    con = connect()
-    try:
-        ensure_schema(con)
-    finally:
-        con.close()
-    return dbp
 
 
 def _insert(con: sqlite3.Connection, path: str, xxhash_val: str | None = None) -> None:

@@ -4,23 +4,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-import pytest
-
 from curator import scan
-from curator.db import connect, ensure_schema
-
-
-@pytest.fixture
-def db(tmp_path: Path, monkeypatch) -> Path:
-    """Set DB_PATH, initialize schema, and return the db file path."""
-    dbp = tmp_path / "test.db"
-    monkeypatch.setenv("DB_PATH", str(dbp))
-    con = connect()
-    try:
-        ensure_schema(con)
-    finally:
-        con.close()
-    return dbp
 
 
 def test_scan_inserts_rows_into_files_table(db: Path, tmp_path: Path):
