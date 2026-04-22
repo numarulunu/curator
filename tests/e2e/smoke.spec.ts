@@ -17,8 +17,9 @@ test("app launches with working sidecar", async () => {
   try {
     const win = await app.firstWindow();
     await expect(win.locator("h1")).toHaveText("Dashboard", { timeout: 10_000 });
-    await expect(win.getByText(/Ping: pong/)).toBeVisible({ timeout: 10_000 });
-    await expect(win.getByText(/Sidecar: 0\.1\.0/)).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByText("Sidecar Online")).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByText("No archive selected")).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByRole("button", { name: "Select Archive Folder" })).toBeVisible({ timeout: 10_000 });
   } finally {
     await app.close();
     rmSync(stateRoot, { recursive: true, force: true });

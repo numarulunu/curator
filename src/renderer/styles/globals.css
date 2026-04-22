@@ -2,10 +2,267 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { height: 100%; }
-body {
-  background: hsl(0 0% 4%);
-  color: hsl(0 0% 98%);
-  font-family: Inter, system-ui, sans-serif;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+/* ---------------------------------------------------------------------------
+   Curator — Design Tokens
+   Forensic archive workstation. Monochrome. Restrained. Serious.
+   --------------------------------------------------------------------------- */
+@layer base {
+  :root {
+    /* Neutral scale (aligned to Tailwind neutral, pinned for predictability) */
+    --color-bg: 10 10 10;              /* neutral-950 */
+    --color-surface: 23 23 23;          /* neutral-900 */
+    --color-surface-raised: 38 38 38;   /* neutral-800 */
+    --color-border: 38 38 38;           /* neutral-800 */
+    --color-border-strong: 64 64 64;    /* neutral-700 */
+    --color-text: 229 229 229;          /* neutral-200 */
+    --color-text-muted: 163 163 163;    /* neutral-400 */
+    --color-text-subtle: 115 115 115;   /* neutral-500 */
+
+    /* Semantic accents — used sparingly, never for chrome */
+    --color-accent: 212 212 212;        /* neutral-300, the "active" tone */
+    --color-danger: 220 38 38;          /* red-600 */
+    --color-warn: 217 119 6;            /* amber-600 */
+    --color-success: 4 120 87;          /* emerald-700 */
+
+    /* Typography */
+    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+      Consolas, "Liberation Mono", "Courier New", monospace;
+
+    /* Rhythm */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+
+    /* Elevation — minimal, no glow */
+    --shadow-1: 0 1px 0 0 rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-text));
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+  }
+
+  /* Headings: tight, deliberate */
+  h1, h2, h3, h4, h5, h6 {
+    color: rgb(var(--color-text));
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+
+  /* Code + monospace surfaces */
+  code,
+  pre,
+  kbd,
+  samp,
+  .font-mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "zero", "ss01";
+  }
+
+  /* Selection — muted, not electric */
+  ::selection {
+    background-color: rgba(229, 229, 229, 0.18);
+    color: rgb(var(--color-text));
+  }
+
+  /* Focus — visible but quiet */
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid rgba(229, 229, 229, 0.55);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Inputs inherit typography; no OS chrome */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Remove number spinners for cleaner numeric inputs */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Horizontal rule */
+  hr {
+    border: 0;
+    border-top: 1px solid rgb(var(--color-border));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Scrollbars — slim, monochrome, non-intrusive
+   --------------------------------------------------------------------------- */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(64 64 64) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: rgb(38 38 38);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(64 64 64);
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Component utilities
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Panel: the default surface for cards, tables, forms */
+  .panel {
+    @apply rounded-md border border-neutral-900 bg-neutral-950/60;
+  }
+  .panel-raised {
+    @apply rounded-md border border-neutral-800 bg-neutral-900/70;
+  }
+
+  /* Subtle divider line used inside panels */
+  .hairline {
+    @apply border-t border-neutral-900;
+  }
+
+  /* Path text — long file paths, copy-friendly */
+  .path {
+    @apply break-all font-mono text-[12px] leading-relaxed text-neutral-400;
+  }
+
+  /* Eyebrow / section label */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500;
+  }
+
+  /* Numeric display — tabular figures */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Skeleton shimmer for loading rows */
+  .skeleton {
+    @apply relative overflow-hidden rounded-sm bg-neutral-900;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      transparent 100%
+    );
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+
+  /* Destructive accent — for Apply / delete surfaces */
+  .destructive-ring {
+    box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.35);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Keyframes
+   --------------------------------------------------------------------------- */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
