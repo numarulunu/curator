@@ -23,11 +23,11 @@ test("scan pipeline walks temp archive end-to-end", async () => {
       await expect(startScan).toBeEnabled({ timeout: 15_000 });
       await startScan.click();
 
-      await expect(win.getByText(/Scanned 5 files/)).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText(/Scanned 5 files\b/)).toBeVisible({ timeout: 15_000 });
     } finally {
       await app.close();
     }
   } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
+    try { fs.rmSync(tempRoot, { recursive: true, force: true }); } catch { /* tempdir gets reaped by OS */ }
   }
 });
