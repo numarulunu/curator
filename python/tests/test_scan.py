@@ -4,37 +4,26 @@ import sqlite3
 import time
 from pathlib import Path
 
+import pytest
+
 from curator import scan
+from curator.db import connect, ensure_schema
 
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS files (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  path            TEXT    NOT NULL UNIQUE,
-  size            INTEGER NOT NULL,
-  mtime_ns        INTEGER NOT NULL,
-  xxhash          TEXT,
-  canonical_date  TEXT,
-  date_source     TEXT,
-  exif_json       TEXT,
-  kind            TEXT,
-  scanned_at      TEXT    NOT NULL
-)
-"""
-
-
-def _init_db(db_path: Path) -> None:
-    con = sqlite3.connect(str(db_path))
-    con.execute(SCHEMA)
-    con.commit()
-    con.close()
-
-
-def test_scan_inserts_rows_into_files_table(tmp_path: Path, monkeypatch):
+@pytest.fixture
+def db(tmp_path: Path, monkeypatch) -> Path:
+    """Set DB_PATH, initialize schema, and return the db file path."""
     dbp = tmp_path / "test.db"
     monkeypatch.setenv("DB_PATH", str(dbp))
-    _init_db(dbp)
+    con = connect()
+    try:
+        ensure_schema(con)
+    finally:
+        con.close()
+    return dbp
 
+
+def test_scan_inserts_rows_into_files_table(db: Path, tmp_path: Path):
     archive = tmp_path / "archive"
     (archive / "sub").mkdir(parents=True)
     (archive / "a.jpg").write_bytes(b"jpeg-bytes")
@@ -45,7 +34,7 @@ def test_scan_inserts_rows_into_files_table(tmp_path: Path, monkeypatch):
 
     assert result == {"scanned": 3, "root": str(archive)}
 
-    con = sqlite3.connect(str(dbp))
+    con = sqlite3.connect(str(db))
     try:
         count = con.execute("SELECT COUNT(*) FROM files").fetchone()[0]
         assert count == 3
@@ -63,11 +52,7 @@ def test_scan_inserts_rows_into_files_table(tmp_path: Path, monkeypatch):
         con.close()
 
 
-def test_scan_is_idempotent_on_rerun(tmp_path: Path, monkeypatch):
-    dbp = tmp_path / "test.db"
-    monkeypatch.setenv("DB_PATH", str(dbp))
-    _init_db(dbp)
-
+def test_scan_is_idempotent_on_rerun(db: Path, tmp_path: Path):
     archive = tmp_path / "archive"
     archive.mkdir()
     target = archive / "a.jpg"
@@ -78,7 +63,7 @@ def test_scan_is_idempotent_on_rerun(tmp_path: Path, monkeypatch):
     r1 = scan.scan(str(archive))
     assert r1["scanned"] == 3
 
-    con = sqlite3.connect(str(dbp))
+    con = sqlite3.connect(str(db))
     try:
         mtime_before = con.execute(
             "SELECT mtime_ns FROM files WHERE path = ?", (str(target),)
@@ -93,7 +78,7 @@ def test_scan_is_idempotent_on_rerun(tmp_path: Path, monkeypatch):
     r2 = scan.scan(str(archive))
     assert r2["scanned"] == 3
 
-    con = sqlite3.connect(str(dbp))
+    con = sqlite3.connect(str(db))
     try:
         count = con.execute("SELECT COUNT(*) FROM files").fetchone()[0]
         assert count == 3
@@ -105,11 +90,7 @@ def test_scan_is_idempotent_on_rerun(tmp_path: Path, monkeypatch):
         con.close()
 
 
-def test_scan_batches_commits(tmp_path: Path, monkeypatch):
-    dbp = tmp_path / "test.db"
-    monkeypatch.setenv("DB_PATH", str(dbp))
-    _init_db(dbp)
-
+def test_scan_batches_commits(db: Path, tmp_path: Path):
     archive = tmp_path / "archive"
     archive.mkdir()
     for i in range(1200):
@@ -118,7 +99,7 @@ def test_scan_batches_commits(tmp_path: Path, monkeypatch):
     result = scan.scan(str(archive), batch_size=500)
     assert result["scanned"] == 1200
 
-    con = sqlite3.connect(str(dbp))
+    con = sqlite3.connect(str(db))
     try:
         count = con.execute("SELECT COUNT(*) FROM files").fetchone()[0]
         assert count == 1200

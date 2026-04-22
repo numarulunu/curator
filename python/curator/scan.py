@@ -23,7 +23,12 @@ def _flush(conn, batch: List[WalkedFile]) -> None:
         conn.executemany(_INSERT_SQL, rows)
         conn.execute("COMMIT")
     except Exception:
-        conn.execute("ROLLBACK")
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            # A failed ROLLBACK (e.g. no active transaction) must not mask
+            # the original exception being propagated below.
+            pass
         raise
 
 
