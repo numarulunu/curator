@@ -16,10 +16,10 @@ test("app launches with working sidecar", async () => {
   });
   try {
     const win = await app.firstWindow();
-    await expect(win.locator("h1")).toHaveText("Dashboard", { timeout: 10_000 });
+    await expect(win.locator("h1")).toHaveText("Curator", { timeout: 10_000 });
     await expect(win.getByText("Sidecar Online")).toBeVisible({ timeout: 10_000 });
-    await expect(win.getByText("No archive selected")).toBeVisible({ timeout: 10_000 });
-    await expect(win.getByRole("button", { name: "Select Archive Folder" })).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByText("Choose an archive to begin")).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByRole("button", { name: "Select Archive" })).toBeVisible({ timeout: 10_000 });
   } finally {
     await app.close();
     rmSync(stateRoot, { recursive: true, force: true });
@@ -48,7 +48,7 @@ test("scan to apply to undo restores file state", async () => {
 
   try {
     const win = await app.firstWindow();
-    await expect(win.locator("h1")).toHaveText("Dashboard", { timeout: 10_000 });
+    await expect(win.locator("h1")).toHaveText("Curator", { timeout: 10_000 });
 
     await win.evaluate(async (root) => {
       await window.curator.scan(root);
