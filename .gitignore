@@ -25,3 +25,10 @@ test-results/
 *.swp
 .DS_Store
 Thumbs.db
+
+dist-sidecar/
+
+python/build/
+python/dist/
+*.tsbuildinfo
+!python/curator-sidecar.spec

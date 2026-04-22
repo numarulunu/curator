@@ -1,6 +1,13 @@
+﻿import json
 import sys
+
 from curator import __version__
+from curator.apply import apply_actions
+from curator.db import connect
+from curator.dater import resolve_canonical
+from curator.exif import extract_many
 from curator.rpc import register
+from curator.undo import undo_session
 
 
 @register("ping")
@@ -20,8 +27,8 @@ from curator.paths import resolve_bin
 def binaries(_params):
     return {
         "exiftool": resolve_bin("exiftool.exe"),
-        "ffprobe":  resolve_bin("ffprobe.exe"),
-        "ffmpeg":   resolve_bin("ffmpeg.exe"),
+        "ffprobe": resolve_bin("ffprobe.exe"),
+        "ffmpeg": resolve_bin("ffmpeg.exe"),
     }
 
 
@@ -49,12 +56,6 @@ def _duplicates_exact_handler(_params: dict) -> list:
     return _clusters.duplicates_exact()
 
 
-import json
-from curator.dater import resolve_canonical
-from curator.exif import extract_many
-from curator.db import connect
-
-
 @register("resolveDates")
 def _resolve_dates_handler(_params: dict) -> dict:
     con = connect()
@@ -74,20 +75,30 @@ def _resolve_dates_handler(_params: dict) -> dict:
         con.execute("BEGIN IMMEDIATE")
         try:
             for fid, path, mtime_ns in rows:
-                # ExifTool returns SourceFile with forward slashes on Windows;
-                # try both forms when looking up metadata for this path.
                 meta = meta_by_path.get(path) or meta_by_path.get(path.replace("\\", "/")) or {}
-                r = resolve_canonical(path, mtime_ns, meta)
+                resolved = resolve_canonical(path, mtime_ns, meta)
                 con.execute(
                     "UPDATE files SET canonical_date = ?, date_source = ?, exif_json = ? WHERE id = ?",
-                    (r.date, r.source, json.dumps(meta) if meta else None, fid),
+                    (resolved.date, resolved.source, json.dumps(meta) if meta else None, fid),
                 )
                 n += 1
             con.execute("COMMIT")
         except Exception:
-            try: con.execute("ROLLBACK")
-            except Exception: pass
+            try:
+                con.execute("ROLLBACK")
+            except Exception:
+                pass
             raise
         return {"resolved": n}
     finally:
         con.close()
+
+
+@register("applyActions")
+def _apply_actions_handler(params: dict) -> dict:
+    return apply_actions(params["actions"], params["archive_root"], params["session_id"])
+
+
+@register("undoSession")
+def _undo_session_handler(params: dict) -> dict:
+    return undo_session(params["session_id"])

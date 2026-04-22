@@ -1,0 +1,11 @@
+{
+  respectGitIgnore: true,
+  permissions: {
+    allow: [
+      Bash(git:*),
+      Bash(pnpm:*),
+      Bash(python:*),
+      Bash(powershell:*)
+    ]
+  }
+}

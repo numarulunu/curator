@@ -1,19 +1,19 @@
 {
   "name": "curator",
   "version": "0.1.0",
-  "description": "Archive Curator — dedup + reorg tool",
+  "description": "Archive Curator â€” dedup + reorg tool",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder --win portable",
-    "build:sidecar": "pwsh scripts/build-sidecar.ps1",
+    "build:sidecar": "powershell -ExecutionPolicy Bypass -File scripts/build-sidecar.ps1",
     "rebuild:node": "pnpm rebuild better-sqlite3",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "test": "pnpm run rebuild:node && vitest run",
     "test:e2e": "pnpm run rebuild:electron && electron-vite build && playwright test",
     "test:py": "cd python && pytest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "fetch-bins": "pwsh scripts/fetch-binaries.ps1"
+    "fetch-bins": "powershell -ExecutionPolicy Bypass -File scripts/fetch-binaries.ps1"
   },
   "dependencies": {
     "better-sqlite3": "11.3.0",
@@ -81,3 +81,4 @@
     }
   }
 }
+

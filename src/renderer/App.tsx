@@ -1,13 +1,11 @@
-import { HashRouter, Route, Routes } from "react-router-dom";
+﻿import { HashRouter, Route, Routes } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
+import { Apply } from "./routes/Apply";
 import { Dashboard } from "./routes/Dashboard";
 import { DuplicatesExact } from "./routes/DuplicatesExact";
 import { MisplacedByDate } from "./routes/MisplacedByDate";
+import { Sessions } from "./routes/Sessions";
 import { ZeroByte } from "./routes/ZeroByte";
-
-function Placeholder({ title }: { title: string }): JSX.Element {
-  return <div className="p-8"><h1 className="text-3xl font-semibold tracking-tight">{title}</h1></div>;
-}
 
 export default function App(): JSX.Element {
   return (
@@ -20,8 +18,8 @@ export default function App(): JSX.Element {
             <Route path="/duplicates-exact" element={<DuplicatesExact />} />
             <Route path="/misplaced" element={<MisplacedByDate />} />
             <Route path="/zero-byte" element={<ZeroByte />} />
-            <Route path="/apply" element={<Placeholder title="Apply" />} />
-            <Route path="/sessions" element={<Placeholder title="Sessions" />} />
+            <Route path="/apply" element={<Apply />} />
+            <Route path="/sessions" element={<Sessions />} />
           </Routes>
         </main>
       </div>
