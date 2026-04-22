@@ -12,7 +12,7 @@ def test_version():
     req = {"jsonrpc": "2.0", "id": 2, "method": "version", "params": {}}
     resp = dispatch(req)
     assert "python" in resp["result"]
-    assert resp["result"]["sidecar"] == "0.1.4"
+    assert resp["result"]["sidecar"] == "0.1.5"
 
 
 def test_binaries_reports_paths(tmp_path, monkeypatch):
