@@ -1,6 +1,7 @@
 ﻿import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
 import { randomUUID } from "node:crypto";
+import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import type {
@@ -29,6 +30,44 @@ import { createUpdaterLogger, startAutoUpdater } from "./updater";
 let sidecar: Sidecar | null = null;
 let db: Database.Database | null = null;
 let mainWindow: BrowserWindow | null = null;
+let backendReady: Promise<void> | null = null;
+let backendError: Error | null = null;
+
+function writeStartupLog(stateDir: string, message: string): void {
+  mkdirSync(stateDir, { recursive: true });
+  appendFileSync(join(stateDir, "_startup.log"), `[${new Date().toISOString()}] ${message}\n`, "utf8");
+}
+
+async function ensureBackendReady(): Promise<void> {
+  if (backendError) throw backendError;
+  if (backendReady) await backendReady;
+  if (backendError) throw backendError;
+  if (!db || !sidecar) throw new Error("Curator backend is not available.");
+}
+
+async function initializeBackend(stateDir: string): Promise<void> {
+  writeStartupLog(stateDir, "backend init start");
+  const dbPath = join(stateDir, "index.db");
+  db = openDb(dbPath);
+  runMigrations(db);
+  writeStartupLog(stateDir, "database ready");
+  sidecar = resolveSidecar();
+  const binDir = app.isPackaged ? join(process.resourcesPath, "bin") : join(__dirname, "..", "..", "resources", "bin");
+  await sidecar.start({ DB_PATH: dbPath, CURATOR_BIN_DIR: binDir });
+  writeStartupLog(stateDir, "sidecar ready");
+  sidecar.on("event", (params) => {
+    const win = mainWindow;
+    if (win && !win.isDestroyed()) win.webContents.send("curator:event", params);
+  });
+  void startAutoUpdater(autoUpdater, {
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+    isE2E: Boolean(process.env.CURATOR_E2E),
+    disabled: process.env.CURATOR_DISABLE_AUTO_UPDATE === "1",
+    logger: createUpdaterLogger(join(stateDir, "_updater.log")),
+  });
+  writeStartupLog(stateDir, "backend init complete");
+}
 
 function resolveSidecar(): Sidecar {
   if (app.isPackaged) {
@@ -72,9 +111,11 @@ ipcMain.handle("curator:getVersion", (): AppVersion => ({
   electron: process.versions.electron,
 }));
 ipcMain.handle("curator:getSidecarVersion", async (): Promise<SidecarVersion> => {
+  await ensureBackendReady();
   return await sidecar!.call<SidecarVersion>("version", {});
 });
 ipcMain.handle("curator:ping", async (): Promise<boolean> => {
+  await ensureBackendReady();
   const result = await sidecar!.call<{ pong: boolean }>("ping", {});
   return result.pong;
 });
@@ -84,21 +125,35 @@ ipcMain.handle("curator:pickFolder", async (): Promise<string | null> => {
   return result.filePaths[0];
 });
 ipcMain.handle("curator:scan", async (_event, root: string): Promise<ScanResult> => {
+  await ensureBackendReady();
   return await sidecar!.call<ScanResult>("scan", { root });
 });
 ipcMain.handle("curator:hashAll", async (): Promise<HashAllResult> => {
+  await ensureBackendReady();
   return await sidecar!.call<HashAllResult>("hashAll", {});
 });
 ipcMain.handle("curator:duplicatesExact", async (): Promise<DuplicateCluster[]> => {
+  await ensureBackendReady();
   return await sidecar!.call<DuplicateCluster[]>("duplicatesExact", {});
 });
-ipcMain.handle("curator:resolveDates", async () => sidecar!.call<{ resolved: number }>("resolveDates", {}));
-ipcMain.handle("curator:listMisplaced", (): MisplacedFile[] => listMisplacedByDate(db!));
-ipcMain.handle("curator:listZeroByte", (): ZeroByteFile[] => listZeroByte(db!));
-ipcMain.handle("curator:buildProposals", (_event, archiveRoot: string): Proposal[] => {
+ipcMain.handle("curator:resolveDates", async () => {
+  await ensureBackendReady();
+  return sidecar!.call<{ resolved: number }>("resolveDates", {});
+});
+ipcMain.handle("curator:listMisplaced", async (): Promise<MisplacedFile[]> => {
+  await ensureBackendReady();
+  return listMisplacedByDate(db!);
+});
+ipcMain.handle("curator:listZeroByte", async (): Promise<ZeroByteFile[]> => {
+  await ensureBackendReady();
+  return listZeroByte(db!);
+});
+ipcMain.handle("curator:buildProposals", async (_event, archiveRoot: string): Promise<Proposal[]> => {
+  await ensureBackendReady();
   return buildProposals(db!, archiveRoot);
 });
 ipcMain.handle("curator:applyProposals", async (_event, archiveRoot: string, proposals: Proposal[]): Promise<ApplyResult> => {
+  await ensureBackendReady();
   const sessionId = randomUUID();
   db!.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'apply')").run(sessionId);
   const insertAction = db!.prepare(
@@ -125,8 +180,12 @@ ipcMain.handle("curator:applyProposals", async (_event, archiveRoot: string, pro
   db!.prepare("UPDATE sessions SET completed_at = datetime('now') WHERE id = ?").run(sessionId);
   return result;
 });
-ipcMain.handle("curator:listSessions", (): SessionRow[] => listSessions(db!));
+ipcMain.handle("curator:listSessions", async (): Promise<SessionRow[]> => {
+  await ensureBackendReady();
+  return listSessions(db!);
+});
 ipcMain.handle("curator:undoSession", async (_event, id: string) => {
+  await ensureBackendReady();
   const result = await sidecar!.call<{ restored: number; failed: number; errors?: Array<{ src: string; error: string }>; session_id: string }>(
     "undoSession",
     { session_id: id },
@@ -137,23 +196,12 @@ ipcMain.handle("curator:undoSession", async (_event, id: string) => {
 
 app.whenReady().then(async () => {
   const stateDir = resolveCuratorStateDir();
-  const dbPath = join(stateDir, "index.db");
-  db = openDb(dbPath);
-  runMigrations(db);
-  sidecar = resolveSidecar();
-  const binDir = app.isPackaged ? join(process.resourcesPath, "bin") : join(__dirname, "..", "..", "resources", "bin");
-  await sidecar.start({ DB_PATH: dbPath, CURATOR_BIN_DIR: binDir });
-  sidecar.on("event", (params) => {
-    const win = mainWindow;
-    if (win && !win.isDestroyed()) win.webContents.send("curator:event", params);
-  });
   createWindow();
-  void startAutoUpdater(autoUpdater, {
-    isPackaged: app.isPackaged,
-    platform: process.platform,
-    isE2E: Boolean(process.env.CURATOR_E2E),
-    disabled: process.env.CURATOR_DISABLE_AUTO_UPDATE === "1",
-    logger: createUpdaterLogger(join(stateDir, "_updater.log")),
+  backendReady = initializeBackend(stateDir).catch((error) => {
+    backendError = error instanceof Error ? error : new Error(String(error));
+    writeStartupLog(stateDir, `backend init failed: ${backendError.message}`);
+    dialog.showErrorBox("Curator startup failed", backendError.message);
+    throw backendError;
   });
 });
 

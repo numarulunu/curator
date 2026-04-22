@@ -1,6 +1,6 @@
 {
   "name": "curator",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Archive Curator â€” dedup + reorg tool",
   "main": "./out/main/index.js",
   "scripts": {
@@ -54,6 +54,7 @@
   "build": {
     "appId": "com.ionut.curator",
     "productName": "Curator",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },
