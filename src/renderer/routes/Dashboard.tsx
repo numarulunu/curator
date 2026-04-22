@@ -18,6 +18,13 @@ export function Dashboard(): JSX.Element {
   }, []);
 
   useEffect(() => {
+    const e2eRoot = window.__CURATOR_E2E_ROOT__;
+    if (typeof e2eRoot === "string" && e2eRoot.length > 0) {
+      setSelectedRoot(e2eRoot);
+    }
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = window.curator.onEvent((params) => {
       if (params.kind === "scan.progress" && typeof params.scanned === "number") {
         setProgress({ scanned: params.scanned });

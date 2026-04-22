@@ -12,5 +12,8 @@ export interface CuratorApi {
 }
 
 declare global {
-  interface Window { curator: CuratorApi }
+  interface Window {
+    curator: CuratorApi;
+    __CURATOR_E2E_ROOT__: string | null;
+  }
 }

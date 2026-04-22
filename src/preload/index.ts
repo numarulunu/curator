@@ -14,3 +14,4 @@ const api: CuratorApi = {
   },
 };
 contextBridge.exposeInMainWorld("curator", api);
+contextBridge.exposeInMainWorld("__CURATOR_E2E_ROOT__", process.env.CURATOR_E2E_ROOT ?? null);
