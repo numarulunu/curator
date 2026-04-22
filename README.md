@@ -1,4 +1,4 @@
-﻿# Archive Curator - Phase 1 MVP
+# Archive Curator - Phase 1 MVP
 
 Portable Windows app that scans a personal media archive, detects exact duplicates, resolves canonical dates from EXIF and filename patterns, flags misplaced files, and executes approved moves or renames through a reversible quarantine-based apply engine.
 
@@ -29,13 +29,13 @@ Perceptual dedup, Motion Photo detection, burst detection, screenshot detection,
     pnpm run build:sidecar
     pnpm run build
 
-Output: `release/Curator-Setup-0.1.3.exe` plus `latest.yml` for auto-update publishing.
+Output: `release/Curator-Setup-0.1.4.exe` plus `latest.yml` for auto-update publishing.
 
 ## Auto updates
 
 - Installed builds check GitHub Releases on startup
 - Updates download automatically in the background
-- The downloaded update installs automatically when the app quits
+- The downloaded update installs automatically as soon as the update is ready
 - Set `CURATOR_DISABLE_AUTO_UPDATE=1` to skip updater checks for a run
 
 ## State locations

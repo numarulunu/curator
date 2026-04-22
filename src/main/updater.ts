@@ -12,6 +12,7 @@ export interface UpdaterClient {
   autoInstallOnAppQuit: boolean;
   on(event: string, handler: (...args: unknown[]) => void): unknown;
   checkForUpdates(): Promise<unknown>;
+  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void;
 }
 
 export interface AutoUpdaterOptions {
@@ -56,7 +57,11 @@ function registerUpdaterEvents(client: UpdaterClient, logger: UpdaterLogger): vo
   client.on("update-available", (info) => logger.info(`update available ${JSON.stringify(info)}`));
   client.on("update-not-available", (info) => logger.info(`no update available ${JSON.stringify(info)}`));
   client.on("download-progress", (progress) => logger.info(`download progress ${JSON.stringify(progress)}`));
-  client.on("update-downloaded", (info) => logger.info(`update downloaded ${JSON.stringify(info)}`));
+  client.on("update-downloaded", (info) => {
+    logger.info(`update downloaded ${JSON.stringify(info)}`);
+    logger.info("installing downloaded update");
+    client.quitAndInstall(false, true);
+  });
   client.on("error", (error) => logger.error(`updater error: ${formatUpdaterMessage(error)}`));
 }
 

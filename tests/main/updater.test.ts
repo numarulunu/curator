@@ -15,6 +15,7 @@ function makeClient() {
     autoInstallOnAppQuit: false,
     on: vi.fn(),
     checkForUpdates: vi.fn().mockResolvedValue(undefined),
+    quitAndInstall: vi.fn(),
   };
 }
 
@@ -36,6 +37,26 @@ describe("startAutoUpdater", () => {
     expect(client.autoInstallOnAppQuit).toBe(true);
     expect(client.on).toHaveBeenCalled();
     expect(client.checkForUpdates).toHaveBeenCalledTimes(1);
+  });
+
+  it("installs automatically after an update has been downloaded", async () => {
+    const client = makeClient();
+    const logger = makeLogger();
+
+    await startAutoUpdater(client, {
+      isPackaged: true,
+      platform: "win32",
+      isE2E: false,
+      disabled: false,
+      logger,
+    });
+
+    const downloadedHandler = client.on.mock.calls.find(([event]) => event === "update-downloaded")?.[1];
+    expect(downloadedHandler).toBeTypeOf("function");
+
+    downloadedHandler?.({ version: "0.1.4" });
+
+    expect(client.quitAndInstall).toHaveBeenCalledTimes(1);
   });
 
   it("skips update checks for unpackaged runs", async () => {
