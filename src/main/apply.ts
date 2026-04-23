@@ -19,13 +19,13 @@ export async function applyProposals(
   const insertAction = db.prepare(
     "INSERT INTO actions (session_id, action, src_path, dst_path, reason, status) VALUES (?, ?, ?, ?, ?, 'pending')",
   );
-  const recordStart = db.transaction((proposals: Proposal[]) => {
+  const recordStart = db.transaction(() => {
     insertSession.run(sessionId);
     for (const proposal of proposals) {
       insertAction.run(sessionId, proposal.action, proposal.src_path, proposal.dst_path, proposal.reason);
     }
   });
-  recordStart(proposals);
+  recordStart();
 
   const result = await sidecar.call<ApplyResult>("applyActions", {
     actions: proposals,

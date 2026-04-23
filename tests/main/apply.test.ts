@@ -23,7 +23,7 @@ describe("applyProposals", () => {
   });
 
   function makeSidecar(result: ApplyResult): SidecarLike {
-    return { call: vi.fn(async () => result) };
+    return { call: vi.fn(async () => result) as SidecarLike["call"] };
   }
 
   const proposals: Proposal[] = [
@@ -104,18 +104,19 @@ describe("applyProposals", () => {
   });
 
   it("rolls back action UPDATE + session completion if the session update fails", async () => {
-    // Drop the sessions table AFTER applyProposals has run the pre-sidecar INSERT
-    // but BEFORE the post-sidecar UPDATE. Use a stub sidecar whose resolve fires
-    // the destructive schema change.
+    // Drop the sessions table inside the mocked sidecar call (between the
+    // pre-sidecar transaction commit and the post-sidecar transaction opening).
+    // When recordFinish then tries to UPDATE sessions, it throws and rolls
+    // back the action UPDATEs from earlier in the same transaction.
     const sidecar: SidecarLike = {
-      call: vi.fn(async (): Promise<never> => {
+      call: vi.fn(async () => {
         // better-sqlite3 enables foreign_keys by default; the actions rows from
         // the pre-sidecar INSERT would otherwise block DROP TABLE sessions.
         db.pragma("foreign_keys = OFF");
         db.exec(`DROP TABLE sessions;`);
         db.pragma("foreign_keys = ON");
-        return { ok: 2, failed: 0, errors: [], session_id: "x" } satisfies ApplyResult as never;
-      }),
+        return { ok: 2, failed: 0, errors: [], session_id: "x" } satisfies ApplyResult;
+      }) as SidecarLike["call"],
     };
 
     await expect(applyProposals(db, sidecar, "/arc", proposals, null)).rejects.toThrow(/no such table: sessions/);
