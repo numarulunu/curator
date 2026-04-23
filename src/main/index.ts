@@ -89,6 +89,8 @@ function createWindow(): void {
     height: 800,
     minWidth: 960,
     minHeight: 600,
+    frame: false,
+    titleBarStyle: "hidden",
     backgroundColor: "#0a0a0a",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
@@ -118,6 +120,17 @@ ipcMain.handle("curator:ping", async (): Promise<boolean> => {
   await ensureBackendReady();
   const result = await sidecar!.call<{ pong: boolean }>("ping", {});
   return result.pong;
+});
+ipcMain.handle("curator:minimizeWindow", async (): Promise<void> => {
+  mainWindow?.minimize();
+});
+ipcMain.handle("curator:toggleMaximizeWindow", async (): Promise<void> => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+});
+ipcMain.handle("curator:closeWindow", async (): Promise<void> => {
+  mainWindow?.close();
 });
 ipcMain.handle("curator:pickFolder", async (): Promise<string | null> => {
   const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });

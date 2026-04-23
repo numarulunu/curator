@@ -8,6 +8,19 @@
    --------------------------------------------------------------------------- */
 @layer base {
   :root {
+    --bg: #0a0a0a;
+    --surface-1: #141414;
+    --surface-2: #1c1c1c;
+    --surface-3: #222222;
+    --text: #ededed;
+    --text-muted: #7a7a7a;
+    --text-dim: #5a5a5a;
+    --border: #262626;
+    --border-strong: #333333;
+    --accent: #3ecf8e;
+    --warn: #e0a54e;
+    --error: #ef4444;
+    --t: 150ms ease-out;
     /* Neutral scale (aligned to Tailwind neutral, pinned for predictability) */
     --color-bg: 10 10 10;              /* neutral-950 */
     --color-surface: 23 23 23;          /* neutral-900 */
@@ -56,10 +69,10 @@
   }
 
   body {
-    background-color: rgb(var(--color-bg));
-    color: rgb(var(--color-text));
-    font-size: 14px;
-    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.55;
     letter-spacing: -0.005em;
   }
 

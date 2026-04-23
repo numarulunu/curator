@@ -43,6 +43,9 @@ export interface CuratorApi {
   getVersion: () => Promise<AppVersion>;
   getSidecarVersion: () => Promise<SidecarVersion>;
   ping: () => Promise<boolean>;
+  minimizeWindow: () => Promise<void>;
+  toggleMaximizeWindow: () => Promise<void>;
+  closeWindow: () => Promise<void>;
   pickFolder: () => Promise<string | null>;
   scan: (root: string) => Promise<ScanResult>;
   hashAll: () => Promise<HashAllResult>;
