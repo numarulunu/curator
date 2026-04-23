@@ -15,6 +15,24 @@ export async function undoSession(
   sessionId: string,
 ): Promise<UndoResult> {
   const result = await sidecar.call<UndoResult>("undoSession", { session_id: sessionId });
-  db.prepare("UPDATE actions SET status = 'reversed' WHERE session_id = ?").run(sessionId);
+
+  const failedBySrc = new Map((result.errors ?? []).map((error) => [error.src, error.error]));
+  const listActions = db.prepare("SELECT src_path FROM actions WHERE session_id = ?");
+  const markReversed = db.prepare("UPDATE actions SET status = 'reversed', error = NULL WHERE session_id = ? AND src_path = ?");
+  const markUndoFailed = db.prepare("UPDATE actions SET error = ? WHERE session_id = ? AND src_path = ?");
+
+  const recordUndo = db.transaction(() => {
+    const rows = listActions.all(sessionId) as Array<{ src_path: string }>;
+    for (const { src_path } of rows) {
+      const error = failedBySrc.get(src_path);
+      if (error) {
+        markUndoFailed.run(error, sessionId, src_path);
+      } else {
+        markReversed.run(sessionId, src_path);
+      }
+    }
+  });
+  recordUndo();
+
   return result;
 }
