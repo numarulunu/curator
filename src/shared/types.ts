@@ -18,6 +18,7 @@ export type ApplyResult = {
   failed: number;
   errors?: ApplyError[];
   session_id: string;
+  skipped?: boolean;
 };
 export interface MisplacedFile {
   id: number;

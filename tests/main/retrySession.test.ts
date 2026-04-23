@@ -69,7 +69,7 @@ describe("retrySession", () => {
 
     const result = await retrySession(db, sidecar, "s1", dir);
 
-    expect(result).toEqual({ ok: 0, failed: 0, errors: [], session_id: "s1" });
+    expect(result).toEqual({ ok: 0, failed: 0, errors: [], session_id: "s1", skipped: true });
     expect((sidecar.call as unknown as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
     const session = db.prepare("SELECT completed_at FROM sessions WHERE id = 's1'").get() as { completed_at: string | null };
     expect(session.completed_at).not.toBeNull();

@@ -44,6 +44,7 @@ export function Dashboard(): JSX.Element {
   const [confirmApplyOpen, setConfirmApplyOpen] = useState(false);
   const [undoTarget, setUndoTarget] = useState<Session | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   useEffect(() => {
     window.curator.getVersion().then(setApp).catch(() => setApp(null));
@@ -194,15 +195,24 @@ export function Dashboard(): JSX.Element {
   }
 
   async function retryInterrupted(sessionId: string): Promise<void> {
+    setRetryingId(sessionId);
+    setError(null);
     try {
-      await window.curator.retrySession(sessionId);
+      const result = await window.curator.retrySession(sessionId);
       await loadSessions();
       await loadFindings();
-      push({ kind: "success", title: "Retry complete", message: "Pending actions reprocessed." });
+      if (result.skipped) {
+        push({ kind: "success", title: "Already complete", message: "No pending actions to retry." });
+      } else {
+        const total = result.ok + result.failed;
+        push({ kind: "success", title: "Retry complete", message: `${result.ok}/${total} action${total === 1 ? "" : "s"} succeeded.` });
+      }
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
       setError(message);
       push({ kind: "error", title: "Retry failed", message });
+    } finally {
+      setRetryingId(null);
     }
   }
 
@@ -305,6 +315,7 @@ export function Dashboard(): JSX.Element {
         setQuery={setQuery}
         sidecar={sidecar}
         undoingId={undoingId}
+        retryingId={retryingId}
       />
 
       <ConfirmDialog

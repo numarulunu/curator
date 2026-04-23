@@ -76,6 +76,7 @@ export interface DashboardSurfaceProps {
   setQuery: (value: string) => void;
   sidecar: SidecarVersion | null;
   undoingId: string | null;
+  retryingId: string | null;
 }
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
@@ -369,24 +370,25 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
                         <span className="num" style={{ fontSize: 11, color: "var(--text-muted)" }}>{formatDateTime(row.started_at)}</span>
                         <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>{formatNumber(row.action_count)} actions | {formatDuration(row.started_at, row.completed_at)}</span>
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 4 }}>
-                          {isInterruptedApply ? (
-                            <button
-                              type="button"
-                              onClick={() => void props.onRetrySession(row.id)}
-                              style={{
-                                height: 30,
-                                padding: "0 12px",
-                                fontSize: 12,
-                                color: "var(--text)",
-                                border: "1px solid var(--border-strong)",
-                                borderRadius: 4,
-                                background: "var(--surface-2)",
-                                transition: "all var(--t)",
-                              }}
-                            >
-                              Retry
-                            </button>
-                          ) : null}
+        {isInterruptedApply ? (
+          <button
+            type="button"
+            disabled={props.retryingId === row.id}
+            onClick={() => void props.onRetrySession(row.id)}
+            style={{
+              fontSize: 11,
+              padding: "2px 8px",
+              border: "1px solid var(--border-strong)",
+              background: "transparent",
+              color: "var(--text)",
+              borderRadius: 3,
+              cursor: props.retryingId === row.id ? "wait" : "pointer",
+              opacity: props.retryingId === row.id ? 0.6 : 1,
+            }}
+          >
+            {props.retryingId === row.id ? "Retrying..." : "Retry"}
+          </button>
+        ) : null}
                           <button
                             type="button"
                             onClick={() => props.onUndoTarget(row)}

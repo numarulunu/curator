@@ -102,7 +102,7 @@ export async function retrySession(
 
   if (pendingRows.length === 0) {
     db.prepare("UPDATE sessions SET completed_at = datetime('now') WHERE id = ? AND completed_at IS NULL").run(sessionId);
-    return { ok: 0, failed: 0, errors: [], session_id: sessionId };
+    return { ok: 0, failed: 0, errors: [], session_id: sessionId, skipped: true };
   }
 
   const header = readSessionHeader(stateDir, sessionId);
