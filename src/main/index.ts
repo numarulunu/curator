@@ -15,6 +15,7 @@ import type {
 import { applyProposals } from "./apply";
 import { undoSession } from "./undo";
 import { openDb, runMigrations } from "./db";
+import { reconcileInterruptedSessions } from "./reconcile";
 import { resolveCuratorStateDir } from "./paths";
 import { buildProposals } from "./proposals";
 import {
@@ -54,6 +55,11 @@ async function initializeBackend(stateDir: string): Promise<void> {
   db = openDb(dbPath);
   runMigrations(db);
   writeStartupLog(stateDir, "database ready");
+  const reconcileSummary = reconcileInterruptedSessions(db, stateDir);
+  writeStartupLog(
+    stateDir,
+    `reconcile: total=${reconcileSummary.total} autoHealed=${reconcileSummary.autoHealed} interrupted=${reconcileSummary.interrupted} neverStarted=${reconcileSummary.neverStarted}`,
+  );
   sidecar = resolveSidecar();
   const binDir = app.isPackaged ? join(process.resourcesPath, "bin") : join(__dirname, "..", "..", "resources", "bin");
   await sidecar.start({ DB_PATH: dbPath, CURATOR_BIN_DIR: binDir });
