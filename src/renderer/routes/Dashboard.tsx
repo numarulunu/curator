@@ -110,10 +110,25 @@ export function Dashboard(): JSX.Element {
     try {
       const scan = await window.curator.scan(archiveRoot);
       setResult(scan);
+      if (scan.scanned === 0) {
+        setDuplicates([]);
+        setMisplaced([]);
+        setZeroByte([]);
+        setProposals(null);
+        setQuery("");
+        setFilter("all");
+        setIsAnalyzed(true);
+        push({
+          kind: "error",
+          title: "No supported media files found",
+          message: "Curator only indexes supported photo/video formats in the selected archive.",
+        });
+        return;
+      }
+      setIsAnalyzed(true);
       await window.curator.hashAll(archiveRoot);
       await window.curator.resolveDates(archiveRoot);
       await loadFindings();
-      setIsAnalyzed(true);
       push({ kind: "success", title: "Analysis complete", message: `${scan.scanned} files indexed.` });
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));

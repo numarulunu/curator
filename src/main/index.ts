@@ -48,6 +48,8 @@ async function ensureBackendReady(): Promise<void> {
 async function initializeBackend(stateDir: string): Promise<void> {
   writeStartupLog(stateDir, "backend init start");
   const dbPath = join(stateDir, "index.db");
+  writeStartupLog(stateDir, `state dir: ${stateDir}`);
+  writeStartupLog(stateDir, `db path: ${dbPath}`);
   db = openDb(dbPath);
   runMigrations(db);
   writeStartupLog(stateDir, "database ready");
@@ -140,7 +142,11 @@ ipcMain.handle("curator:pickFolder", async (): Promise<string | null> => {
 });
 ipcMain.handle("curator:scan", async (_event, root: string): Promise<ScanResult> => {
   await ensureBackendReady();
-  return await sidecar!.call<ScanResult>("scan", { root });
+  const stateDir = resolveCuratorStateDir();
+  writeStartupLog(stateDir, `scan requested: ${root}`);
+  const result = await sidecar!.call<ScanResult>("scan", { root });
+  writeStartupLog(stateDir, `scan result: root=${result.root} scanned=${result.scanned}`);
+  return result;
 });
 ipcMain.handle("curator:hashAll", async (_event, root: string): Promise<HashAllResult> => {
   await ensureBackendReady();

@@ -27,8 +27,17 @@ const kindColor: Record<Exclude<DashboardSurfaceFilter, "all">, string> = {
   "zero-byte": "var(--warn)",
 };
 
-const emptyAnalysisHeadline = "No exact duplicate, misplaced, or zero-byte findings were found";
-const emptyAnalysisDetail = "Curator currently checks exact byte-identical duplicates only. Near-duplicate matches are not part of this analysis yet.";
+function getEmptyAnalysisHeadline(result: ScanResult | null): string {
+  return result?.scanned === 0
+    ? "No supported media files were indexed"
+    : "No exact duplicate, misplaced, or zero-byte findings were found";
+}
+
+function getEmptyAnalysisDetail(result: ScanResult | null): string {
+  return result?.scanned === 0
+    ? "Check that the selected folder contains supported photo/video formats and that Curator can access it."
+    : "Curator currently checks exact byte-identical duplicates only. Near-duplicate matches are not part of this analysis yet.";
+}
 
 export interface DashboardSurfaceProps {
   app: AppVersion | null;
@@ -68,6 +77,8 @@ export interface DashboardSurfaceProps {
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
+  const emptyAnalysisHeadline = getEmptyAnalysisHeadline(props.result);
+  const emptyAnalysisDetail = getEmptyAnalysisDetail(props.result);
 
   useEffect(() => {
     if (!expandedRowKey) return;
