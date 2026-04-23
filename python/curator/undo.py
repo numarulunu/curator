@@ -33,6 +33,7 @@ def undo_session(session_id: str) -> dict[str, Any]:
             failed += 1
             errors.append({"src": action.get("src"), "error": str(exc)})
 
-    payload["reversed"] = True
-    manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if failed == 0:
+        payload["reversed"] = True
+        manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return {"restored": restored, "failed": failed, "errors": errors, "session_id": session_id}
