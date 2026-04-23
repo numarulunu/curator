@@ -26,7 +26,7 @@ const actionLabel: Record<ProposalAction, string> = {
 };
 
 export function Apply(): JSX.Element {
-  const { archiveRoot } = useArchive();
+  const { archiveRoot, outputRoot } = useArchive();
   const { push } = useToast();
 
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
@@ -59,7 +59,7 @@ export function Apply(): JSX.Element {
     setApplying(true);
     setError(null);
     try {
-      const next = await window.curator.applyProposals(archiveRoot, proposals);
+      const next = await window.curator.applyProposals(archiveRoot, proposals, outputRoot);
       setResult(next);
       setProposals(null);
       setConfirmOpen(false);

@@ -27,10 +27,15 @@ const kindColor: Record<Exclude<DashboardSurfaceFilter, "all">, string> = {
   "zero-byte": "var(--warn)",
 };
 
+const emptyAnalysisHeadline = "No exact duplicate, misplaced, or zero-byte findings were found";
+const emptyAnalysisDetail = "Curator currently checks exact byte-identical duplicates only. Near-duplicate matches are not part of this analysis yet.";
+
 export interface DashboardSurfaceProps {
   app: AppVersion | null;
   archiveRoot: string | null;
+  outputRoot: string | null;
   clearArchive: () => void;
+  clearOutput: () => void;
   counts: { duplicate: number; misplaced: number; "zero-byte": number; total: number };
   duplicateWaste: number;
   error: string | null;
@@ -41,6 +46,7 @@ export interface DashboardSurfaceProps {
   loadFindings: () => Promise<void>;
   onPrimaryAction: () => Promise<void>;
   onSelectArchive: () => Promise<void>;
+  onSelectOutput: () => Promise<void>;
   onUndoTarget: (row: Session) => void;
   ping: boolean | null;
   primaryAction: PrimaryActionState;
@@ -73,18 +79,11 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
     : !props.isAnalyzed
       ? "Archive selected. Analysis has not started yet."
       : props.counts.total === 0
-        ? "No cleanup findings in the latest analysis."
+        ? emptyAnalysisHeadline
         : `${formatNumber(props.counts.total)} finding${props.counts.total === 1 ? "" : "s"} ready for review.`;
 
-  const queueDetail = props.progressLabel ?? stageText[props.primaryAction.stage];
+  const queueDetail = props.progressLabel ?? (props.isAnalyzed && props.counts.total === 0 ? emptyAnalysisDetail : stageText[props.primaryAction.stage]);
   const latestSession = props.recentSessions[0] ?? null;
-  const reviewValue = !props.archiveRoot
-    ? "-"
-    : !props.isAnalyzed
-      ? "Analysis pending"
-      : props.proposalCount > 0
-        ? `${formatNumber(props.proposalCount)} actions staged`
-        : `${formatNumber(props.counts.total)} findings loaded`;
 
   return (
     <div className="grid h-screen grid-rows-[48px_1fr_auto] bg-[var(--bg)] text-[var(--text)]">
@@ -129,31 +128,34 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
       <div className="grid min-h-0 grid-cols-1 border-y border-[var(--border)] xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-h-0 min-w-0 flex-col border-b border-[var(--border)] bg-[var(--bg)] xl:border-b-0 xl:border-r">
           <div className="flex flex-col gap-2 border-b border-[var(--border)] px-4 py-[14px]">
-            <PickerRow label="Input" value={props.archiveRoot ?? "-"} buttonLabel="Browse" onClick={() => void props.onSelectArchive()} disabled={props.footerBusy} />
+            <PickerRow
+              label="Input"
+              value={props.archiveRoot ?? "-"}
+              buttonLabel="Browse"
+              onClick={() => void props.onSelectArchive()}
+              disabled={props.footerBusy}
+              trailing={<ActionIconButton title="Clear input folder" onClick={props.clearArchive} disabled={!props.archiveRoot || props.footerBusy} icon="x" />}
+            />
             <PickerRow
               label="Output"
-              value={reviewValue}
-              buttonLabel="Clear"
-              onClick={props.clearArchive}
-              disabled={!props.archiveRoot || props.footerBusy}
-              trailing={
-                <button
-                  type="button"
-                  onClick={() => void props.loadFindings()}
-                  disabled={!props.archiveRoot || !props.isAnalyzed || props.footerBusy || props.refreshing}
-                  className="flex h-[30px] w-[30px] items-center justify-center rounded-[4px] border border-[var(--border)] text-[var(--text-muted)] disabled:cursor-not-allowed disabled:text-[var(--text-dim)] disabled:opacity-45"
-                  title="Refresh findings"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M20 10a8 8 0 1 0 2 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              }
+              value={props.outputRoot ?? "-"}
+              buttonLabel="Browse"
+              onClick={() => void props.onSelectOutput()}
+              disabled={props.footerBusy}
+              trailing={<ActionIconButton title="Clear output folder" onClick={props.clearOutput} disabled={!props.outputRoot || props.footerBusy} icon="x" />}
             />
           </div>
 
           {props.error ? <div className="mx-4 mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{props.error}</div> : null}
+
+          <div className="mx-4 mt-3 flex justify-end">
+            <ActionIconButton
+              title="Refresh findings"
+              onClick={() => void props.loadFindings()}
+              disabled={!props.archiveRoot || !props.isAnalyzed || props.footerBusy || props.refreshing}
+              icon="refresh"
+            />
+          </div>
 
           <div className="grid shrink-0 grid-cols-[28px_minmax(0,1fr)_92px_72px_120px_24px] border-b border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">
             <input type="checkbox" checked readOnly aria-label="Findings selected" />
@@ -173,7 +175,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
               <div className="p-8 text-center text-[12px] text-[var(--text-dim)]">Press Analyze Archive in the bottom bar.</div>
             ) : props.filteredRows.length === 0 ? (
               <div className="p-8 text-center text-[12px] text-[var(--text-dim)]">
-                {props.reviewRowCount === 0 ? "No duplicates, misplaced files, or zero-byte files were found in the latest analysis." : "Adjust the filter rail or clear the current search to bring rows back into view."}
+                {props.reviewRowCount === 0 ? emptyAnalysisHeadline + ". " + emptyAnalysisDetail : "Adjust the filter rail or clear the current search to bring rows back into view."}
               </div>
             ) : (
               props.filteredRows.map((row) => (
@@ -246,6 +248,29 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
         </div>
       </div>
     </div>
+  );
+}
+
+function ActionIconButton(props: { title: string; onClick: () => void; disabled?: boolean; icon: "x" | "refresh" }): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      disabled={props.disabled}
+      className="flex h-[30px] w-[30px] items-center justify-center rounded-[4px] border border-[var(--border)] text-[var(--text-muted)] disabled:cursor-not-allowed disabled:text-[var(--text-dim)] disabled:opacity-45"
+      title={props.title}
+    >
+      {props.icon === "refresh" ? (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M20 10a8 8 0 1 0 2 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
   );
 }
 

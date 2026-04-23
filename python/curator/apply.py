@@ -35,14 +35,15 @@ def _ensure_unique(dst: Path, src: Path) -> Path:
     return dst.with_name(f"{dst.stem}_{suffix}{dst.suffix}")
 
 
-def apply_actions(actions: list[dict[str, Any]], archive_root: str, session_id: str) -> dict[str, Any]:
+def apply_actions(actions: list[dict[str, Any]], archive_root: str, session_id: str, output_root: str | None = None) -> dict[str, Any]:
     ok = 0
     failed = 0
     errors: list[dict[str, str]] = []
     manifest: list[dict[str, str | None]] = []
 
     archive = Path(archive_root)
-    quarantine_root = archive / "_curator_quarantine" / session_id
+    quarantine_base = Path(output_root) if output_root else archive
+    quarantine_root = quarantine_base / "_curator_quarantine" / session_id
 
     for action in actions:
         kind = action["action"]
@@ -83,6 +84,7 @@ def apply_actions(actions: list[dict[str, Any]], archive_root: str, session_id: 
             {
                 "session_id": session_id,
                 "archive_root": archive_root,
+                "output_root": output_root,
                 "started_at": datetime.now(timezone.utc).isoformat(),
                 "actions": manifest,
             },

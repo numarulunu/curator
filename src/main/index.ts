@@ -166,7 +166,7 @@ ipcMain.handle("curator:buildProposals", async (_event, archiveRoot: string): Pr
   await ensureBackendReady();
   return buildProposals(db!, archiveRoot);
 });
-ipcMain.handle("curator:applyProposals", async (_event, archiveRoot: string, proposals: Proposal[]): Promise<ApplyResult> => {
+ipcMain.handle("curator:applyProposals", async (_event, archiveRoot: string, proposals: Proposal[], outputRoot?: string | null): Promise<ApplyResult> => {
   await ensureBackendReady();
   const sessionId = randomUUID();
   db!.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'apply')").run(sessionId);
@@ -180,6 +180,7 @@ ipcMain.handle("curator:applyProposals", async (_event, archiveRoot: string, pro
   const result = await sidecar!.call<ApplyResult>("applyActions", {
     actions: proposals,
     archive_root: archiveRoot,
+    output_root: outputRoot ?? null,
     session_id: sessionId,
   });
 

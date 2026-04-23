@@ -93,3 +93,26 @@ def test_writes_session_manifest(tmp_path: Path, monkeypatch) -> None:
     assert payload["archive_root"] == str(archive)
     assert len(payload["actions"]) == 1
     assert payload["actions"][0]["action"] == "quarantine"
+
+
+def test_quarantine_uses_selected_output_root(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "localappdata"))
+    archive = tmp_path / "arch"
+    output = tmp_path / "out"
+    archive.mkdir()
+    output.mkdir()
+    target = archive / "old.jpg"
+    target.write_bytes(b"x")
+
+    result = apply_actions(
+        [{"action": "quarantine", "src_path": str(target), "dst_path": None, "reason": "dup"}],
+        str(archive),
+        "sess-output",
+        str(output),
+    )
+
+    assert result["ok"] == 1
+    assert result["failed"] == 0
+    assert not target.exists()
+    quarantined = list((output / "_curator_quarantine" / "sess-output").rglob("old.jpg"))
+    assert len(quarantined) == 1

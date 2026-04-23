@@ -19,7 +19,7 @@ import { useToast } from "../state/ToastContext";
 import { DashboardSurface, type DashboardSurfaceFilter } from "../components/dashboard/DashboardSurface";
 
 export function Dashboard(): JSX.Element {
-  const { archiveRoot, pickArchive, setArchiveRoot } = useArchive();
+  const { archiveRoot, outputRoot, pickArchive, pickOutput, setArchiveRoot, setOutputRoot } = useArchive();
   const { push } = useToast();
   const event = useCuratorEvents();
 
@@ -146,7 +146,7 @@ export function Dashboard(): JSX.Element {
     setApplying(true);
     setError(null);
     try {
-      const next = await window.curator.applyProposals(archiveRoot, proposals);
+      const next = await window.curator.applyProposals(archiveRoot, proposals, outputRoot);
       setConfirmApplyOpen(false);
       clearReview();
       await loadSessions();
@@ -245,7 +245,9 @@ export function Dashboard(): JSX.Element {
       <DashboardSurface
         app={app}
         archiveRoot={archiveRoot}
+        outputRoot={outputRoot}
         clearArchive={() => setArchiveRoot(null)}
+        clearOutput={() => setOutputRoot(null)}
         counts={counts}
         duplicateWaste={duplicateWaste}
         error={error}
@@ -256,6 +258,7 @@ export function Dashboard(): JSX.Element {
         loadFindings={loadFindings}
         onPrimaryAction={onPrimaryAction}
         onSelectArchive={async () => { await pickArchive(); }}
+        onSelectOutput={async () => { await pickOutput(); }}
         onUndoTarget={setUndoTarget}
         ping={ping}
         primaryAction={primaryAction}

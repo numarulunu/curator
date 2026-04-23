@@ -104,7 +104,7 @@ def _resolve_dates_handler(_params: dict) -> dict:
 
 @register("applyActions")
 def _apply_actions_handler(params: dict) -> dict:
-    return apply_actions(params["actions"], params["archive_root"], params["session_id"])
+    return apply_actions(params["actions"], params["archive_root"], params["session_id"], params.get("output_root"))
 
 
 @register("undoSession")

@@ -54,7 +54,7 @@ export interface CuratorApi {
   listMisplaced: (archiveRoot: string) => Promise<MisplacedFile[]>;
   listZeroByte: (archiveRoot: string) => Promise<ZeroByteFile[]>;
   buildProposals: (archiveRoot: string) => Promise<Proposal[]>;
-  applyProposals: (archiveRoot: string, proposals: Proposal[]) => Promise<ApplyResult>;
+  applyProposals: (archiveRoot: string, proposals: Proposal[], outputRoot?: string | null) => Promise<ApplyResult>;
   listSessions: () => Promise<Session[]>;
   undoSession: (id: string) => Promise<{ restored: number; failed: number; errors?: ApplyError[]; session_id: string }>;
   onEvent: (listener: (params: { kind: string; [k: string]: unknown }) => void) => () => void;
