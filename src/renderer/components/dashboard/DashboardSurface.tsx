@@ -56,6 +56,7 @@ export interface DashboardSurfaceProps {
   isAnalyzed: boolean;
   loadFindings: () => Promise<void>;
   onPrimaryAction: () => Promise<void>;
+  onRetrySession: (sessionId: string) => Promise<void> | void;
   onSelectArchive: () => Promise<void>;
   onSelectOutput: () => Promise<void>;
   onUndoTarget: (row: Session) => void;
@@ -344,16 +345,48 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
                 <div style={{ fontSize: 12, color: "var(--text-dim)" }}>No sessions yet.</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>                  {props.recentSessions.map((row) => {
+                    const isInterruptedApply = row.kind === "apply" && row.completed_at === null;
                     const status = sessionStatus(row);
+                    const statusWord = isInterruptedApply
+                      ? "Interrupted"
+                      : status === "complete"
+                        ? "Complete"
+                        : "Active";
+                    const statusColor = isInterruptedApply
+                      ? "var(--warn)"
+                      : status === "active"
+                        ? "#8ba7ff"
+                        : "var(--accent)";
                     return (
                       <div key={row.id} style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface-1)", display: "flex", flexDirection: "column", gap: 4 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                           <span className="num" style={{ fontSize: 11, color: "var(--text)" }}>{shortHash(row.id, 8, 4)}</span>
-                          <span style={{ fontSize: 10, color: status === "active" ? "#8ba7ff" : "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{status}</span>
+                          <span style={{ fontSize: 10, color: statusColor, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                            {statusWord}
+                            {isInterruptedApply && row.pending_count > 0 ? ` · ${row.pending_count} pending` : null}
+                          </span>
                         </div>
                         <span className="num" style={{ fontSize: 11, color: "var(--text-muted)" }}>{formatDateTime(row.started_at)}</span>
                         <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>{formatNumber(row.action_count)} actions | {formatDuration(row.started_at, row.completed_at)}</span>
-                        <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 4 }}>
+                          {isInterruptedApply ? (
+                            <button
+                              type="button"
+                              onClick={() => void props.onRetrySession(row.id)}
+                              style={{
+                                height: 30,
+                                padding: "0 12px",
+                                fontSize: 12,
+                                color: "var(--text)",
+                                border: "1px solid var(--border-strong)",
+                                borderRadius: 4,
+                                background: "var(--surface-2)",
+                                transition: "all var(--t)",
+                              }}
+                            >
+                              Retry
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => props.onUndoTarget(row)}

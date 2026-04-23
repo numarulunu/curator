@@ -193,6 +193,19 @@ export function Dashboard(): JSX.Element {
     }
   }
 
+  async function retryInterrupted(sessionId: string): Promise<void> {
+    try {
+      await window.curator.retrySession(sessionId);
+      await loadSessions();
+      await loadFindings();
+      push({ kind: "success", title: "Retry complete", message: "Pending actions reprocessed." });
+    } catch (err) {
+      const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
+      setError(message);
+      push({ kind: "error", title: "Retry failed", message });
+    }
+  }
+
   const reviewRows = useMemo(() => buildReviewRows(duplicates, misplaced, zeroByte), [duplicates, misplaced, zeroByte]);
 
   const filteredRows = useMemo(() => {
@@ -272,6 +285,7 @@ export function Dashboard(): JSX.Element {
         isAnalyzed={isAnalyzed}
         loadFindings={loadFindings}
         onPrimaryAction={onPrimaryAction}
+        onRetrySession={retryInterrupted}
         onSelectArchive={async () => { await pickArchive(); }}
         onSelectOutput={async () => { await pickOutput(); }}
         onUndoTarget={setUndoTarget}

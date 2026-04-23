@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DashboardSurface } from "../../src/renderer/components/dashboard/DashboardSurface";
 import { buildReviewRows } from "../../src/renderer/lib/dashboard";
@@ -22,6 +22,7 @@ describe("DashboardSurface", () => {
         isAnalyzed: false,
         loadFindings: async () => {},
         onPrimaryAction: async () => {},
+        onRetrySession: () => {},
         onSelectArchive: async () => {},
         onSelectOutput: async () => {},
         onUndoTarget: () => {},
@@ -65,6 +66,7 @@ describe("DashboardSurface", () => {
         isAnalyzed: true,
         loadFindings: async () => {},
         onPrimaryAction: async () => {},
+        onRetrySession: () => {},
         onSelectArchive: async () => {},
         onSelectOutput: async () => {},
         onUndoTarget: () => {},
@@ -108,6 +110,7 @@ describe("DashboardSurface", () => {
         isAnalyzed: true,
         loadFindings: async () => {},
         onPrimaryAction: async () => {},
+        onRetrySession: () => {},
         onSelectArchive: async () => {},
         onSelectOutput: async () => {},
         onUndoTarget: () => {},
@@ -171,6 +174,7 @@ describe("DashboardSurface", () => {
         isAnalyzed: true,
         loadFindings: async () => {},
         onPrimaryAction: async () => {},
+        onRetrySession: () => {},
         onSelectArchive: async () => {},
         onSelectOutput: async () => {},
         onUndoTarget: () => {},
@@ -202,5 +206,60 @@ describe("DashboardSurface", () => {
     expect(markup).not.toContain(">Clusters<");
     expect(markup).not.toContain("3 identical files");
     expect(markup).not.toContain("1 duplicates");
+  });
+
+  it("renders an Interrupted badge and Retry button for apply sessions with completed_at=null", () => {
+    const onRetrySession = vi.fn();
+    const markup = renderToStaticMarkup(
+      React.createElement(DashboardSurface, {
+        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.14" } as never,
+        archiveRoot: "D:/archive",
+        outputRoot: null,
+        clearArchive: () => {},
+        clearOutput: () => {},
+        counts: { duplicate: 0, misplaced: 0, "zero-byte": 0, total: 0 },
+        duplicateWaste: 0,
+        error: null,
+        filter: "all",
+        filteredRows: [],
+        footerBusy: false,
+        isAnalyzed: false,
+        loadFindings: async () => {},
+        onPrimaryAction: async () => {},
+        onRetrySession,
+        onSelectArchive: async () => {},
+        onSelectOutput: async () => {},
+        onUndoTarget: () => {},
+        ping: true,
+        primaryAction: { stage: "select", label: "Select Archive" },
+        progressLabel: null,
+        proposalCount: 0,
+        proposalCounts: { quarantine: 0, move_to_year: 0 },
+        query: "",
+        recentSessions: [
+          {
+            id: "abcdef1234567890",
+            started_at: "2026-04-24T10:00:00Z",
+            completed_at: null,
+            kind: "apply",
+            action_count: 5,
+            pending_count: 2,
+          },
+        ],
+        refreshing: false,
+        result: null,
+        reviewRowCount: 0,
+        sessionsLoading: false,
+        sessionsTotal: 1,
+        setFilter: () => {},
+        setQuery: () => {},
+        sidecar: null,
+        undoingId: null,
+      }),
+    );
+
+    expect(markup).toMatch(/Interrupted/);
+    expect(markup).toMatch(/Retry/);
+    expect(markup).toMatch(/2 pending/);
   });
 });
