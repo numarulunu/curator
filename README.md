@@ -5,7 +5,8 @@ Portable Windows app that scans a personal media archive, detects exact duplicat
 ## What it does (Phase 1)
 
 - Scan an archive folder and index every photo or video to SQLite at `%LOCALAPPDATA%\Curator\index.db`
-- Compute xxhash for every file and detect exact duplicates
+- Compute xxhash for every file and detect exact byte-identical duplicate clusters
+- Curator currently detects exact byte-identical duplicates only; resized, edited, or visually similar matches are not detected yet
 - Resolve canonical date per file (EXIF -> filename patterns -> mtime)
 - List files where folder-year != canonical-year
 - Build proposals (quarantine duplicates keeping oldest; move misplaced to correct year folder)

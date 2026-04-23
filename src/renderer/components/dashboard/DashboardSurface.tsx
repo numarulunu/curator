@@ -9,14 +9,14 @@ export type DashboardSurfaceFilter = "all" | "duplicate" | "misplaced" | "zero-b
 
 const filterLabels: Record<DashboardSurfaceFilter, string> = {
   all: "All",
-  duplicate: "Duplicates",
+  duplicate: "Exact-match clusters",
   misplaced: "Misplaced",
   "zero-byte": "Zero-byte",
 };
 
 const stageText = {
   select: "Choose an archive folder to arm the workspace.",
-  analyze: "Analyze archive to inspect duplicates, misplaced files, and zero-byte files.",
+  analyze: "Analyze archive to inspect exact-match clusters, misplaced files, and zero-byte files.",
   build: "Build a reversible plan from the findings currently in view.",
   apply: "Apply the plan on disk. Every action is recorded and can be undone.",
 };
@@ -198,7 +198,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
           <div className="flex flex-wrap gap-3 border-t border-[var(--border)] bg-[var(--surface-1)] px-4 py-1.5 text-[10px] text-[var(--text-dim)]">
             <span>{formatNumber(props.counts.total)} total</span>
             <span>{formatNumber(props.filteredRows.length)}/{formatNumber(props.counts.total)} selected</span>
-            {props.counts.duplicate > 0 ? <span style={{ color: kindColor.duplicate }}>{formatNumber(props.counts.duplicate)} duplicates</span> : null}
+            {props.counts.duplicate > 0 ? <span style={{ color: kindColor.duplicate }}>{formatNumber(props.counts.duplicate)} exact-match cluster{props.counts.duplicate === 1 ? "" : "s"}</span> : null}
             {props.counts.misplaced > 0 ? <span style={{ color: kindColor.misplaced }}>{formatNumber(props.counts.misplaced)} misplaced</span> : null}
             {props.counts["zero-byte"] > 0 ? <span style={{ color: kindColor["zero-byte"] }}>{formatNumber(props.counts["zero-byte"])} zero-byte</span> : null}
           </div>
@@ -213,7 +213,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
                 <div><div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">Sessions</div><div className="mt-1 text-2xl tracking-[-0.04em]">{formatNumber(props.sessionsTotal)}</div><div className="truncate text-[10px] text-[var(--text-muted)]">{latestSession ? shortHash(latestSession.id, 8, 4) : "No history yet"}</div></div>
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                <Meter label="Dupes" value={props.counts.total === 0 ? 0 : Math.round((props.counts.duplicate / props.counts.total) * 100)} detail={formatNumber(props.counts.duplicate)} tone="accent" />
+                <Meter label="Exact-match clusters" value={props.counts.total === 0 ? 0 : Math.round((props.counts.duplicate / props.counts.total) * 100)} detail={`${formatNumber(props.counts.duplicate)} exact-match cluster${props.counts.duplicate === 1 ? "" : "s"}`} tone="accent" />
                 <Meter label="Misplaced" value={props.counts.total === 0 ? 0 : Math.round((props.counts.misplaced / props.counts.total) * 100)} detail={formatNumber(props.counts.misplaced)} tone="muted" />
                 <Meter label="Risk" value={props.counts.total === 0 ? 0 : Math.round((props.counts["zero-byte"] / props.counts.total) * 100)} detail={props.counts["zero-byte"] === 0 ? "Low" : "Review"} tone="warn" />
               </div>
@@ -231,7 +231,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
             </div>
             <RightSection title="Analyze">
               <Field label="Scope" helper="Choose which findings stay in focus.">
-                <SegmentedButtons options={["All", "Duplicates", "Misplaced", "Zero-byte"]} active={filterLabels[props.filter]} onSelect={(label) => props.setFilter(label === "All" ? "all" : label === "Duplicates" ? "duplicate" : label === "Misplaced" ? "misplaced" : "zero-byte")} />
+                <SegmentedButtons options={["All", "Exact-match clusters", "Misplaced", "Zero-byte"]} active={filterLabels[props.filter]} onSelect={(label) => props.setFilter(label === "All" ? "all" : label === "Exact-match clusters" ? "duplicate" : label === "Misplaced" ? "misplaced" : "zero-byte")} />
               </Field>
               <Field label="Search" helper="Filter by path or detail.">
                 <input value={props.query} onChange={(event) => props.setQuery(event.target.value)} placeholder="Path or detail" className="h-[50px] w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-1)] px-4 text-[12px] text-[var(--text)] outline-none" />

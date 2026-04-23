@@ -36,8 +36,8 @@ export function buildReviewRows(
       key: `duplicate:${cluster.xxhash}`,
       kind: "duplicate" as const,
       path: cluster.files[0]?.path ?? cluster.xxhash,
-      title: `${cluster.count} identical files`,
-      detail: `${Math.max(0, cluster.count - 1)} extra copies`,
+      title: `Exact duplicate cluster (${cluster.count} file${cluster.count === 1 ? "" : "s"})`,
+      detail: `${Math.max(0, cluster.count - 1)} extra byte-identical cop${Math.max(0, cluster.count - 1) === 1 ? "y" : "ies"}`,
     })),
     ...misplaced.map((row) => ({
       key: `misplaced:${row.id}`,
