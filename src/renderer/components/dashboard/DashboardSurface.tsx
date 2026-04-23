@@ -98,7 +98,14 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
               <rect x="4" y="7.5" width="4" height="1.5" fill="var(--accent)" />
             </svg>
           </div>
-          <h1 className="text-[13px] font-semibold tracking-[-0.01em] text-[var(--text)]">Curator</h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="text-[13px] font-semibold tracking-[-0.01em] text-[var(--text)]">Curator</h1>
+            {props.app?.version ? (
+              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-[2px] text-[10px] font-medium text-[var(--text-muted)]">
+                v{props.app.version}
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="flex gap-[2px]" style={{ WebkitAppRegion: "no-drag" } as CSSProperties}>
           <WindowBtn label="Minimize" onClick={() => void window.curator.minimizeWindow()}>

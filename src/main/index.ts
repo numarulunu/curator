@@ -109,6 +109,7 @@ function createWindow(): void {
 }
 
 ipcMain.handle("curator:getVersion", (): AppVersion => ({
+  version: app.getVersion(),
   node: process.versions.node,
   electron: process.versions.electron,
 }));

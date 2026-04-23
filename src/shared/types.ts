@@ -1,4 +1,4 @@
-﻿export type AppVersion = { node: string; electron: string };
+﻿export type AppVersion = { version: string; node: string; electron: string };
 export type SidecarVersion = { sidecar: string; python: string };
 export type ScanResult = { scanned: number; root: string };
 export type DuplicateFile = { id: number; path: string; size: number; mtime_ns: number };
