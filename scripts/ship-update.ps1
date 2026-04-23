@@ -60,8 +60,8 @@ try {
   if (-not (Test-Path $latestYmlPath)) { throw "latest.yml not found at $latestYmlPath" }
 
   $releaseExists = $false
-  & gh release view $tag --repo $repo --json tagName 1>$null 2>$null
-  if ($LASTEXITCODE -eq 0) { $releaseExists = $true }
+  $existingTag = & gh release list --repo $repo --limit 100 --json tagName --jq ".[] | select(.tagName == \"$tag\") | .tagName"
+  if ($LASTEXITCODE -eq 0 -and $existingTag -eq $tag) { $releaseExists = $true }
 
   if ($releaseExists) {
     Invoke-Step "Uploading refreshed release assets for $tag." {
