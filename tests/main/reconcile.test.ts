@@ -16,7 +16,7 @@ describe("reconcileInterruptedSessions", () => {
     dir = mkdtempSync(join(tmpdir(), "reconcile-"));
     db = openDb(join(dir, "index.db"));
     runMigrations(db);
-    sessionsDir = join(dir, "Curator", "sessions");
+    sessionsDir = join(dir, "sessions");
     mkdirSync(sessionsDir, { recursive: true });
   });
 

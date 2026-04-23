@@ -70,7 +70,7 @@ interface SessionJsonlHeader {
 }
 
 function readSessionHeader(stateDir: string, sessionId: string): SessionJsonlHeader | null {
-  const path = join(stateDir, "Curator", "sessions", `${sessionId}.jsonl`);
+  const path = join(stateDir, "sessions", `${sessionId}.jsonl`);
   let raw: string;
   try {
     raw = readFileSync(path, "utf8");

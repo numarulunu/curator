@@ -18,7 +18,7 @@ describe("retrySession", () => {
     dir = mkdtempSync(join(tmpdir(), "retry-"));
     db = openDb(join(dir, "index.db"));
     runMigrations(db);
-    sessionsDir = join(dir, "Curator", "sessions");
+    sessionsDir = join(dir, "sessions");
     mkdirSync(sessionsDir, { recursive: true });
 
     db.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'apply')").run("s1");

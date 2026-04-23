@@ -63,7 +63,7 @@ export function reconcileInterruptedSessions(
   db: Database.Database,
   stateDir: string,
 ): ReconcileSummary {
-  const sessionsDir = join(stateDir, "Curator", "sessions");
+  const sessionsDir = join(stateDir, "sessions");
   const pending = db
     .prepare("SELECT id FROM sessions WHERE completed_at IS NULL AND kind = 'apply'")
     .all() as Array<{ id: string }>;
