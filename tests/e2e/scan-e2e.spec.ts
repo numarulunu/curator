@@ -68,7 +68,7 @@ test("unsupported-only archive clears prior populated findings from the renderer
       await win.reload();
       await expect(win.getByRole("button", { name: "Analyze Archive" })).toBeVisible({ timeout: 15_000 });
       await win.getByRole("button", { name: "Analyze Archive" }).click();
-      await expect(win.getByText("2 identical files")).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText("Exact duplicate cluster (2 files)")).toBeVisible({ timeout: 15_000 });
       await expect(win.getByRole("button", { name: "Build Plan" })).toBeVisible({ timeout: 15_000 });
 
       await win.evaluate((root) => {
@@ -82,7 +82,7 @@ test("unsupported-only archive clears prior populated findings from the renderer
       await expect(win.getByText("Check that the selected folder contains supported photo/video formats and that Curator can access it.")).toBeVisible({ timeout: 15_000 });
       await expect(win.getByText("No supported media files found")).toBeVisible({ timeout: 15_000 });
       await expect(win.getByText("Curator only indexes supported photo/video formats in the selected archive.")).toBeVisible({ timeout: 15_000 });
-      await expect(win.getByText("2 identical files")).toHaveCount(0);
+      await expect(win.getByText("Exact duplicate cluster (2 files)")).toHaveCount(0);
     } finally {
       await app.close();
     }

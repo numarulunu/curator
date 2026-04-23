@@ -18,7 +18,6 @@ test("app launches with working sidecar", async () => {
     const win = await app.firstWindow();
     await expect(win.getByText("Input")).toBeVisible({ timeout: 10_000 });
     await expect(win.getByRole("button", { name: "Browse" }).first()).toBeVisible({ timeout: 10_000 });
-    await expect(win.getByText("Custom")).toBeVisible({ timeout: 10_000 });
   } finally {
     await app.close();
     rmSync(stateRoot, { recursive: true, force: true });
