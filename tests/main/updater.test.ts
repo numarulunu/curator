@@ -39,7 +39,7 @@ describe("startAutoUpdater", () => {
     expect(client.checkForUpdates).toHaveBeenCalledTimes(1);
   });
 
-  it("installs automatically after an update has been downloaded", async () => {
+  it("installs automatically and silently after an update has been downloaded", async () => {
     const client = makeClient();
     const logger = makeLogger();
 
@@ -57,6 +57,7 @@ describe("startAutoUpdater", () => {
     downloadedHandler?.({ version: "0.1.4" });
 
     expect(client.quitAndInstall).toHaveBeenCalledTimes(1);
+    expect(client.quitAndInstall).toHaveBeenCalledWith(true, true);
   });
 
   it("skips update checks for unpackaged runs", async () => {

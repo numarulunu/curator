@@ -1,6 +1,6 @@
 {
   "name": "curator",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Archive Curator â€” dedup + reorg tool",
   "main": "./out/main/index.js",
   "scripts": {
@@ -15,7 +15,8 @@
     "test:py": "python\\.venv\\Scripts\\python.exe -m pytest -q",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "fetch-bins": "powershell -ExecutionPolicy Bypass -File scripts/fetch-binaries.ps1",
-    "release:win": "pnpm run rebuild:electron && electron-vite build && electron-builder --win nsis --publish always"
+    "release:win": "pnpm run rebuild:electron && electron-vite build && electron-builder --win nsis --publish always",
+    "ship:win": "powershell -ExecutionPolicy Bypass -File scripts/ship-update.ps1"
   },
   "dependencies": {
     "better-sqlite3": "11.3.0",

@@ -60,7 +60,7 @@ function registerUpdaterEvents(client: UpdaterClient, logger: UpdaterLogger): vo
   client.on("update-downloaded", (info) => {
     logger.info(`update downloaded ${JSON.stringify(info)}`);
     logger.info("installing downloaded update");
-    client.quitAndInstall(false, true);
+    client.quitAndInstall(true, true);
   });
   client.on("error", (error) => logger.error(`updater error: ${formatUpdaterMessage(error)}`));
 }
