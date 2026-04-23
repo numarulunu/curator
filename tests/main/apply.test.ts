@@ -74,4 +74,56 @@ describe("applyProposals", () => {
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.status === "pending")).toBe(true);
   });
+
+  it("rolls back session + action inserts if any pre-sidecar insert fails", async () => {
+    // Inject a BEFORE INSERT trigger that aborts when src_path === 'FAIL'.
+    // If the pre-sidecar burst is atomic, the prior session + action inserts
+    // are rolled back when the trigger fires on the second action.
+    db.exec(`
+      CREATE TRIGGER apply_test_poison
+      BEFORE INSERT ON actions
+      WHEN NEW.src_path = 'FAIL'
+      BEGIN
+        SELECT RAISE(ABORT, 'poison-trigger');
+      END;
+    `);
+
+    const poisoned: Proposal[] = [
+      { action: "quarantine", src_path: "/arc/first.jpg", dst_path: null, reason: "dup" },
+      { action: "quarantine", src_path: "FAIL",          dst_path: null, reason: "dup" },
+    ];
+    const sidecar: SidecarLike = { call: vi.fn() };
+
+    await expect(applyProposals(db, sidecar, "/arc", poisoned, null)).rejects.toThrow(/poison-trigger/);
+
+    const sessionCount = db.prepare("SELECT COUNT(*) FROM sessions").pluck().get();
+    const actionCount  = db.prepare("SELECT COUNT(*) FROM actions").pluck().get();
+    expect(sessionCount).toBe(0);
+    expect(actionCount).toBe(0);
+    expect((sidecar.call as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
+  });
+
+  it("rolls back action UPDATE + session completion if the session update fails", async () => {
+    // Drop the sessions table AFTER applyProposals has run the pre-sidecar INSERT
+    // but BEFORE the post-sidecar UPDATE. Use a stub sidecar whose resolve fires
+    // the destructive schema change.
+    const sidecar: SidecarLike = {
+      call: vi.fn(async (): Promise<never> => {
+        // better-sqlite3 enables foreign_keys by default; the actions rows from
+        // the pre-sidecar INSERT would otherwise block DROP TABLE sessions.
+        db.pragma("foreign_keys = OFF");
+        db.exec(`DROP TABLE sessions;`);
+        db.pragma("foreign_keys = ON");
+        return { ok: 2, failed: 0, errors: [], session_id: "x" } satisfies ApplyResult as never;
+      }),
+    };
+
+    await expect(applyProposals(db, sidecar, "/arc", proposals, null)).rejects.toThrow(/no such table: sessions/);
+
+    // sessions table is gone (we dropped it), but the actions rows must not be
+    // half-updated. Re-create sessions to query; check action status is still 'pending'.
+    db.exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at TEXT NOT NULL, completed_at TEXT, kind TEXT NOT NULL)`);
+    const rows = db.prepare("SELECT status FROM actions").all() as Array<{ status: string }>;
+    expect(rows.every((r) => r.status === "pending")).toBe(true);
+  });
 });
