@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { AppVersion, ScanResult, Session, SidecarVersion } from "@shared/types";
 import type { PrimaryActionState, ReviewRow } from "../../lib/dashboard";
 import { sessionStatus } from "../../lib/curatorUi";
-import { formatBytes, formatDateTime, formatDuration, formatNumber, shortHash } from "../../lib/format";
+import { formatDateTime, formatDuration, formatNumber, shortHash } from "../../lib/format";
 
 export type DashboardSurfaceFilter = "all" | "duplicate" | "misplaced" | "zero-byte";
 
@@ -21,11 +21,13 @@ const stageText = {
   apply: "Apply the plan on disk. Every action is recorded and can be undone.",
 };
 
-const kindColor: Record<Exclude<DashboardSurfaceFilter, "all">, string> = {
-  duplicate: "var(--accent)",
-  misplaced: "#7dd3fc",
-  "zero-byte": "var(--warn)",
+const kindMeta: Record<Exclude<DashboardSurfaceFilter, "all">, { badge: string; status: string; tone: string }> = {
+  duplicate: { badge: "Duplicate", status: "Review", tone: "var(--accent)" },
+  misplaced: { badge: "Year", status: "Move", tone: "#8ba7ff" },
+  "zero-byte": { badge: "Empty", status: "Risk", tone: "var(--warn)" },
 };
+
+const QUEUE_GRID_COLUMNS = "28px minmax(0, 1fr) 92px 92px 120px 24px";
 
 function getEmptyAnalysisHeadline(result: ScanResult | null): string {
   return result?.scanned === 0
@@ -77,6 +79,7 @@ export interface DashboardSurfaceProps {
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
+  const [compactLayout, setCompactLayout] = useState<boolean>(() => (typeof window === "undefined" ? false : window.innerWidth < 1120));
   const emptyAnalysisHeadline = getEmptyAnalysisHeadline(props.result);
   const emptyAnalysisDetail = getEmptyAnalysisDetail(props.result);
 
@@ -84,6 +87,13 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
     if (!expandedRowKey) return;
     if (!props.filteredRows.some((row) => row.key === expandedRowKey)) setExpandedRowKey(null);
   }, [expandedRowKey, props.filteredRows]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = (): void => setCompactLayout(window.innerWidth < 1120);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const queueHeadline = !props.archiveRoot
     ? "Select an archive folder to begin."
@@ -95,282 +105,567 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
 
   const queueDetail = props.progressLabel ?? (props.isAnalyzed && props.counts.total === 0 ? emptyAnalysisDetail : stageText[props.primaryAction.stage]);
   const latestSession = props.recentSessions[0] ?? null;
+  const selectedCount = props.filteredRows.length;
+  const wasteMetric = props.duplicateWaste > 0 ? compactMetric(props.duplicateWaste) : { value: "0", suffix: "B" };
+  const stats = [
+    {
+      label: "Findings",
+      value: formatNumber(props.counts.total),
+      suffix: null as string | null,
+      detail: props.result ? `${formatNumber(props.result.scanned)} indexed` : "Awaiting analysis",
+    },
+    {
+      label: "Waste",
+      value: wasteMetric.value,
+      suffix: wasteMetric.suffix,
+      detail: props.counts.duplicate > 0 ? `${formatNumber(props.counts.duplicate)} exact-match cluster${props.counts.duplicate === 1 ? "" : "s"}` : "No duplicate waste yet",
+    },
+    {
+      label: "Plan",
+      value: formatNumber(props.proposalCount),
+      suffix: null as string | null,
+      detail: props.proposalCount > 0 ? `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move` : "Nothing staged",
+    },
+  ];
+
+  const meters = [
+    {
+      key: "duplicate",
+      shortLabel: "Exact",
+      level: `${formatNumber(props.counts.duplicate)} cluster${props.counts.duplicate === 1 ? "" : "s"}`,
+      value: props.counts.total === 0 ? 0 : Math.round((props.counts.duplicate / props.counts.total) * 100),
+      tone: "var(--accent)",
+    },
+    {
+      key: "misplaced",
+      shortLabel: "Move",
+      level: `${formatNumber(props.counts.misplaced)} file${props.counts.misplaced === 1 ? "" : "s"}`,
+      value: props.counts.total === 0 ? 0 : Math.round((props.counts.misplaced / props.counts.total) * 100),
+      tone: "#8ba7ff",
+    },
+    {
+      key: "risk",
+      shortLabel: "Risk",
+      level: props.counts["zero-byte"] === 0 ? "Low" : "Review",
+      value: props.counts.total === 0 ? 0 : Math.round((props.counts["zero-byte"] / props.counts.total) * 100),
+      tone: "var(--warn)",
+    },
+  ];
 
   return (
-    <div className="grid h-screen grid-rows-[48px_1fr_auto] bg-[var(--bg)] text-[var(--text)]">
-      <div className="flex items-center justify-between bg-[var(--surface-1)] px-4" style={{ WebkitAppRegion: "drag", userSelect: "none" } as CSSProperties}>
-        <div className="flex min-w-0 items-center gap-[10px]">
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border border-[var(--border-strong)] bg-[var(--surface-3)]">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-              <rect x="1" y="1" width="2" height="10" fill="var(--text)" />
-              <rect x="9" y="1" width="2" height="10" fill="var(--text)" />
-              <rect x="4" y="3" width="4" height="1.5" fill="var(--accent)" />
-              <rect x="4" y="7.5" width="4" height="1.5" fill="var(--accent)" />
-            </svg>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <h1 className="text-[13px] font-semibold tracking-[-0.01em] text-[var(--text)]">Curator</h1>
-            {props.app?.version ? (
-              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-[2px] text-[10px] font-medium text-[var(--text-muted)]">
-                v{props.app.version}
-              </span>
-            ) : null}
+    <div
+      style={{
+        height: "100vh",
+        display: "grid",
+        gridTemplateRows: "48px 1fr auto",
+        background: "var(--bg)",
+        color: "var(--text)",
+      }}
+    >
+      <div
+        style={{
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          background: "var(--surface-1)",
+          WebkitAppRegion: "drag",
+          userSelect: "none",
+        } as CSSProperties}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <Logo />
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--text)" }}>Curator</span>
+            {props.app?.version ? <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>v{props.app.version}</span> : null}
           </div>
         </div>
-        <div className="flex gap-[2px]" style={{ WebkitAppRegion: "no-drag" } as CSSProperties}>
-          <WindowBtn label="Minimize" onClick={() => void window.curator.minimizeWindow()}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </WindowBtn>
-          <WindowBtn label="Maximize" onClick={() => void window.curator.toggleMaximizeWindow()}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M5 5h14v14H5z" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-          </WindowBtn>
-          <WindowBtn label="Close" onClick={() => void window.curator.closeWindow()} danger>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </WindowBtn>
+        <div style={{ display: "flex", gap: 2, WebkitAppRegion: "no-drag" } as CSSProperties}>
+          <WindowBtn label="Minimize" onClick={() => void window.curator.minimizeWindow()} icon={<MinimizeIcon />} />
+          <WindowBtn label="Maximize" onClick={() => void window.curator.toggleMaximizeWindow()} icon={<MaximizeIcon />} />
+          <WindowBtn label="Close" onClick={() => void window.curator.closeWindow()} icon={<CloseIcon />} danger />
         </div>
       </div>
 
-      <div className="grid min-h-0 grid-cols-1 border-y border-[var(--border)] xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex min-h-0 min-w-0 flex-col border-b border-[var(--border)] bg-[var(--bg)] xl:border-b-0 xl:border-r">
-          <div className="flex flex-col gap-2 border-b border-[var(--border)] px-4 py-[14px]">
-            <PickerRow
-              label="Input"
-              value={props.archiveRoot ?? "-"}
-              buttonLabel="Browse"
-              onClick={() => void props.onSelectArchive()}
-              disabled={props.footerBusy}
-              trailing={<ActionIconButton title="Clear input folder" onClick={props.clearArchive} disabled={!props.archiveRoot || props.footerBusy} icon="x" />}
-            />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: compactLayout ? "1fr" : "minmax(0, 1fr) 320px",
+          gridTemplateRows: compactLayout ? "minmax(0, 1fr) minmax(260px, 40vh)" : "1fr",
+          minHeight: 0,
+          borderTop: "1px solid var(--border)",
+          borderBottom: "1px solid var(--border)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, borderRight: compactLayout ? "none" : "1px solid var(--border)", borderBottom: compactLayout ? "1px solid var(--border)" : "none", background: "var(--bg)" }}>
+          <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+            <PickerRow label="Input" value={props.archiveRoot} onPick={() => void props.onSelectArchive()} disabled={props.footerBusy} />
             <PickerRow
               label="Output"
-              value={props.outputRoot ?? "-"}
-              buttonLabel="Browse"
-              onClick={() => void props.onSelectOutput()}
+              value={props.outputRoot}
+              onPick={() => void props.onSelectOutput()}
               disabled={props.footerBusy}
-              trailing={<ActionIconButton title="Clear output folder" onClick={props.clearOutput} disabled={!props.outputRoot || props.footerBusy} icon="x" />}
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => void props.loadFindings()}
+                  disabled={!props.archiveRoot || !props.isAnalyzed || props.footerBusy || props.refreshing}
+                  title="Refresh findings"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 4,
+                    color: !props.archiveRoot || !props.isAnalyzed || props.footerBusy || props.refreshing ? "var(--text-dim)" : "var(--text-muted)",
+                    border: "1px solid var(--border)",
+                    opacity: !props.archiveRoot || !props.isAnalyzed || props.footerBusy || props.refreshing ? 0.45 : 1,
+                    transition: "all var(--t)",
+                  }}
+                >
+                  <RefreshIcon />
+                </button>
+              }
             />
           </div>
 
-          {props.error ? <div className="mx-4 mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-300">{props.error}</div> : null}
-
-          <div className="mx-4 mt-3 flex justify-end">
-            <ActionIconButton
-              title="Refresh findings"
-              onClick={() => void props.loadFindings()}
-              disabled={!props.archiveRoot || !props.isAnalyzed || props.footerBusy || props.refreshing}
-              icon="refresh"
-            />
-          </div>
-
-          <div className="grid shrink-0 grid-cols-[28px_minmax(0,1fr)_92px_72px_120px_24px] border-b border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">
-            <input type="checkbox" checked readOnly aria-label="Findings selected" />
+          <div style={{ display: "grid", gridTemplateColumns: QUEUE_GRID_COLUMNS, padding: "10px 16px", fontSize: 10, fontWeight: 500, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
+            <input type="checkbox" checked={selectedCount > 0} readOnly aria-label="Selected findings" />
             <span>Filename</span>
             <span>Class</span>
-            <span className="pr-4 text-right">Size</span>
-            <span className="pl-2">Status</span>
+            <span style={{ textAlign: "right" }}>Size</span>
+            <span>Status</span>
             <span />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>            {props.error ? <InlineAlert message={props.error} /> : null}
             {!props.archiveRoot ? (
-              <div className="p-8 text-center text-[12px] text-[var(--text-dim)]">
-                Pick an archive folder.
-              </div>
+              <EmptyNotice>Pick an archive folder.</EmptyNotice>
             ) : !props.isAnalyzed ? (
-              <div className="p-8 text-center text-[12px] text-[var(--text-dim)]">Press Analyze Archive in the bottom bar.</div>
+              <EmptyNotice>Press {props.primaryAction.label} in the bottom bar.</EmptyNotice>
             ) : props.filteredRows.length === 0 ? (
-              <div className="p-8 text-center text-[12px] text-[var(--text-dim)]">
-                {props.reviewRowCount === 0 ? emptyAnalysisHeadline + ". " + emptyAnalysisDetail : "Adjust the filter rail or clear the current search to bring rows back into view."}
-              </div>
+              <EmptyNotice>{props.reviewRowCount === 0 ? `${emptyAnalysisHeadline}. ${emptyAnalysisDetail}` : "Adjust the filter rail or clear the current search to bring rows back into view."}</EmptyNotice>
             ) : (
               props.filteredRows.map((row) => (
-                <QueueRow key={row.key} row={row} expanded={expandedRowKey === row.key} onToggle={() => setExpandedRowKey((current) => (current === row.key ? null : row.key))} />
+                <ReviewQueueRow
+                  key={row.key}
+                  row={row}
+                  expanded={expandedRowKey === row.key}
+                  onToggle={() => setExpandedRowKey((current) => (current === row.key ? null : row.key))}
+                />
               ))
             )}
           </div>
 
-          <div className="flex flex-wrap gap-3 border-t border-[var(--border)] bg-[var(--surface-1)] px-4 py-1.5 text-[10px] text-[var(--text-dim)]">
-            <span>{formatNumber(props.counts.total)} total</span>
-            <span>{formatNumber(props.filteredRows.length)}/{formatNumber(props.counts.total)} selected</span>
-            {props.counts.duplicate > 0 ? <span style={{ color: kindColor.duplicate }}>{formatNumber(props.counts.duplicate)} exact-match cluster{props.counts.duplicate === 1 ? "" : "s"}</span> : null}
-            {props.counts.misplaced > 0 ? <span style={{ color: kindColor.misplaced }}>{formatNumber(props.counts.misplaced)} misplaced</span> : null}
-            {props.counts["zero-byte"] > 0 ? <span style={{ color: kindColor["zero-byte"] }}>{formatNumber(props.counts["zero-byte"])} zero-byte</span> : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 18, padding: "10px 16px 14px", borderTop: "1px solid var(--border)", color: "var(--text-dim)", fontSize: 10 }}>
+            <span className="num">{formatNumber(props.counts.total)} total</span>
+            <span className="num">{formatNumber(selectedCount)}/{formatNumber(props.counts.total)} selected</span>
+            {props.counts.duplicate > 0 ? <span className="num" style={{ color: "var(--accent)" }}>{formatNumber(props.counts.duplicate)} exact-match cluster{props.counts.duplicate === 1 ? "" : "s"}</span> : null}
+            {props.counts.misplaced > 0 ? <span className="num" style={{ color: "#8ba7ff" }}>{formatNumber(props.counts.misplaced)} misplaced</span> : null}
+            {props.counts["zero-byte"] > 0 ? <span className="num" style={{ color: "var(--warn)" }}>{formatNumber(props.counts["zero-byte"])} zero-byte</span> : null}
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col bg-[var(--surface-1)]">
-          <div className="border-b border-[var(--border)] p-[14px]">
-            <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div><div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">Findings</div><div className="mt-1 text-2xl tracking-[-0.04em]">{formatNumber(props.counts.total)}</div><div className="text-[10px] text-[var(--text-muted)]">{props.result ? `${formatNumber(props.result.scanned)} scanned` : "Awaiting analysis"}</div></div>
-                <div><div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">Plan</div><div className="mt-1 text-2xl tracking-[-0.04em]">{formatNumber(props.proposalCount)}</div><div className="text-[10px] text-[var(--text-muted)]">{props.proposalCount > 0 ? "Actions queued" : "Nothing staged"}</div></div>
-                <div><div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">Sessions</div><div className="mt-1 text-2xl tracking-[-0.04em]">{formatNumber(props.sessionsTotal)}</div><div className="truncate text-[10px] text-[var(--text-muted)]">{latestSession ? shortHash(latestSession.id, 8, 4) : "No history yet"}</div></div>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, background: "var(--surface-1)" }}>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+            <button type="button" style={{ height: 48, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface-2)", color: "var(--text)", textAlign: "left" }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{sectionHeading(props.primaryAction.stage)}</span>
+              <ChevronDownIcon color="var(--text-dim)" />
+            </button>
+
+            <div style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface-2)", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                {stats.map((stat) => (
+                  <div key={stat.label} style={{ minWidth: 0, padding: "4px 0 2px", display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ fontSize: 10, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{stat.label}</span>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 3, minWidth: 0 }}>
+                      <span className="num" style={{ fontSize: 24, lineHeight: 1, color: "var(--text)", letterSpacing: "-0.04em", whiteSpace: "nowrap" }}>{stat.value}</span>
+                      {stat.suffix ? <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>{stat.suffix}</span> : null}
+                    </div>
+                    <span className="num" style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.detail}</span>
+                  </div>
+                ))}
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Meter label="Exact-match clusters" value={props.counts.total === 0 ? 0 : Math.round((props.counts.duplicate / props.counts.total) * 100)} detail={`${formatNumber(props.counts.duplicate)} exact-match cluster${props.counts.duplicate === 1 ? "" : "s"}`} tone="accent" />
-                <Meter label="Misplaced" value={props.counts.total === 0 ? 0 : Math.round((props.counts.misplaced / props.counts.total) * 100)} detail={formatNumber(props.counts.misplaced)} tone="muted" />
-                <Meter label="Risk" value={props.counts.total === 0 ? 0 : Math.round((props.counts["zero-byte"] / props.counts.total) * 100)} detail={props.counts["zero-byte"] === 0 ? "Low" : "Review"} tone="warn" />
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                {meters.map((meter) => (
+                  <div key={meter.key} title={meter.level} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
+                      <span style={{ fontSize: 11, color: "var(--text)", whiteSpace: "nowrap" }}>{meter.shortLabel}</span>
+                      <span className="num" style={{ fontSize: 10, color: meter.tone, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{meter.level}</span>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 999, background: "var(--border)", overflow: "hidden" }}>
+                      <div style={{ width: `${meter.value}%`, height: "100%", borderRadius: 999, background: meter.tone }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="border-b border-[var(--border)] p-[14px]">
-              <button type="button" className="flex h-[78px] w-full items-center justify-between rounded-[6px] border border-[var(--border)] bg-[rgba(34,34,34,0.92)] px-6 text-left">
-                <span className="text-[18px] font-semibold text-[var(--text)]">{props.primaryAction.stage === "apply" ? "Plan ready" : props.primaryAction.stage === "build" ? "Review" : props.primaryAction.stage === "analyze" ? "Analyze" : "Custom"}</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M6 9l6 6 6-6" stroke="var(--text-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </div>
+          <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
             <RightSection title="Analyze">
               <Field label="Scope" helper="Choose which findings stay in focus.">
-                <SegmentedButtons options={["All", "Exact-match clusters", "Misplaced", "Zero-byte"]} active={filterLabels[props.filter]} onSelect={(label) => props.setFilter(label === "All" ? "all" : label === "Exact-match clusters" ? "duplicate" : label === "Misplaced" ? "misplaced" : "zero-byte")} />
+                <SegmentedControl
+                  options={Object.entries(filterLabels).map(([value, label]) => ({ value: value as DashboardSurfaceFilter, label }))}
+                  active={props.filter}
+                  onSelect={props.setFilter}
+                />
               </Field>
               <Field label="Search" helper="Filter by path or detail.">
-                <input value={props.query} onChange={(event) => props.setQuery(event.target.value)} placeholder="Path or detail" className="h-[50px] w-full rounded-[6px] border border-[var(--border)] bg-[var(--surface-1)] px-4 text-[12px] text-[var(--text)] outline-none" />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, height: 50, padding: "0 14px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-1)" }}>
+                  <SearchIcon />
+                  <input value={props.query} onChange={(event) => props.setQuery(event.target.value)} placeholder="Path or detail" style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--text)", background: "transparent", border: "none", outline: "none" }} />
+                </div>
               </Field>
             </RightSection>
+
             <RightSection title="Plan">
               <Field label="Action mix" helper="Curator builds reversible actions from the current findings.">
-                <SegmentedButtons options={[`Quarantine ${formatNumber(props.proposalCounts.quarantine)}`, `Move ${formatNumber(props.proposalCounts.move_to_year)}`]} active={props.proposalCount > 0 ? `Quarantine ${formatNumber(props.proposalCounts.quarantine)}` : ""} onSelect={() => undefined} readonly />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <MetricPill label="Quarantine" value={formatNumber(props.proposalCounts.quarantine)} active={props.proposalCounts.quarantine > 0} />
+                  <MetricPill label="Move" value={formatNumber(props.proposalCounts.move_to_year)} active={props.proposalCounts.move_to_year > 0} />
+                </div>
               </Field>
               <Field label="Status" helper={stageText[props.primaryAction.stage]}>
-                <div className="flex h-[50px] items-center rounded-[6px] border border-[var(--border)] bg-[var(--surface-1)] px-4 text-[12px] text-[var(--text)]">{props.proposalCount > 0 ? "Plan ready to apply" : props.isAnalyzed ? "Build plan from findings" : "Analyze the archive first"}</div>
+                <div style={{ minHeight: 50, display: "flex", alignItems: "center", padding: "0 14px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-1)", color: "var(--text)", fontSize: 12 }}>
+                  {props.proposalCount > 0 ? "Plan ready to apply" : props.isAnalyzed ? "Build plan from findings" : "Analyze the archive first"}
+                </div>
               </Field>
             </RightSection>
-            <RightSection title="Recent sessions">{props.sessionsLoading ? <div className="text-[12px] text-[var(--text-dim)]">Loading sessions...</div> : props.recentSessions.length === 0 ? <div className="text-[12px] text-[var(--text-dim)]">No sessions yet.</div> : <div className="space-y-2">{props.recentSessions.map((row) => { const status = sessionStatus(row); return <div key={row.id} className="rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-2.5"><div className="flex items-center justify-between gap-2"><span className="text-[11px] text-[var(--text)]">{shortHash(row.id, 8, 4)}</span><span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: status === "active" ? "#7dd3fc" : "var(--accent)" }}>{status}</span></div><div className="mt-1 text-[11px] text-[var(--text-muted)]">{formatDateTime(row.started_at)}</div><div className="text-[11px] text-[var(--text-dim)]">{formatNumber(row.action_count)} actions | {formatDuration(row.started_at, row.completed_at)}</div><div className="mt-2 flex justify-end"><button type="button" onClick={() => props.onUndoTarget(row)} disabled={status === "active" || props.undoingId !== null} className="h-7 rounded-[4px] border border-[var(--border-strong)] bg-[var(--surface-2)] px-2.5 text-[11px] text-[var(--text)] disabled:cursor-not-allowed disabled:text-[var(--text-dim)] disabled:opacity-45">{props.undoingId === row.id ? "Undoing..." : "Undo"}</button></div></div>; })}</div>}</RightSection>
-            <RightSection title="System"><InfoRow label="Sidecar" value={props.sidecar ? props.sidecar.sidecar : "Waiting"} /><InfoRow label="Python" value={props.sidecar ? props.sidecar.python : "-"} /><InfoRow label="Electron" value={props.app ? props.app.electron : "-"} /><InfoRow label="Node" value={props.app ? props.app.node : "-"} /></RightSection>
+
+            <RightSection title="Sessions">
+              {props.sessionsLoading ? (
+                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Loading sessions...</div>
+              ) : props.recentSessions.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>No sessions yet.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>                  {props.recentSessions.map((row) => {
+                    const status = sessionStatus(row);
+                    return (
+                      <div key={row.id} style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface-1)", display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <span className="num" style={{ fontSize: 11, color: "var(--text)" }}>{shortHash(row.id, 8, 4)}</span>
+                          <span style={{ fontSize: 10, color: status === "active" ? "#8ba7ff" : "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{status}</span>
+                        </div>
+                        <span className="num" style={{ fontSize: 11, color: "var(--text-muted)" }}>{formatDateTime(row.started_at)}</span>
+                        <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>{formatNumber(row.action_count)} actions | {formatDuration(row.started_at, row.completed_at)}</span>
+                        <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+                          <button
+                            type="button"
+                            onClick={() => props.onUndoTarget(row)}
+                            disabled={status === "active" || props.undoingId !== null}
+                            style={{
+                              height: 30,
+                              padding: "0 12px",
+                              fontSize: 12,
+                              color: status === "active" || props.undoingId !== null ? "var(--text-dim)" : "var(--text)",
+                              border: "1px solid var(--border-strong)",
+                              borderRadius: 4,
+                              background: "var(--surface-2)",
+                              opacity: status === "active" || props.undoingId !== null ? 0.45 : 1,
+                              transition: "all var(--t)",
+                            }}
+                          >
+                            {props.undoingId === row.id ? "Undoing..." : "Undo"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </RightSection>
+
+            <RightSection title="System">
+              <InfoRow label="Sidecar" value={props.sidecar ? props.sidecar.sidecar : props.ping === false ? "Offline" : "Waiting"} />
+              <InfoRow label="Python" value={props.sidecar ? props.sidecar.python : "-"} />
+              <InfoRow label="Electron" value={props.app ? props.app.electron : "-"} />
+              <InfoRow label="Node" value={props.app ? props.app.node : "-"} />
+            </RightSection>
           </div>
         </div>
       </div>
 
-      <div className="relative bg-[var(--surface-1)]">
-        {props.footerBusy ? <div className="absolute inset-x-0 top-0 h-[2px] bg-[var(--border)]"><div className="h-full w-[42%] animate-pulse" style={{ background: props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)" }} /></div> : null}
-        <div className="grid grid-cols-[168px_minmax(0,1fr)]">
-          <button type="button" onClick={() => void props.onPrimaryAction()} disabled={props.footerBusy} className="min-h-14 border-r border-[var(--border)] text-[13px] font-semibold disabled:cursor-not-allowed" style={{ color: props.footerBusy ? "var(--text-dim)" : props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a", background: props.footerBusy ? "var(--surface-2)" : props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)" }}>{props.footerBusy ? "Working..." : props.primaryAction.label}</button>
-          <div className="flex min-w-0 flex-col justify-center gap-1 px-4 py-2"><div className="text-[12px] text-[var(--text)]">{props.error ?? queueHeadline}</div><div className="flex items-center gap-3"><div className="truncate text-[10px] text-[var(--text-dim)]">{queueDetail}</div>{latestSession ? <button type="button" onClick={() => props.onUndoTarget(latestSession)} disabled={props.footerBusy || props.undoingId !== null} className="shrink-0 text-[11px] text-[var(--text-muted)] underline underline-offset-[3px] disabled:cursor-not-allowed disabled:opacity-45">Undo last session</button> : props.isAnalyzed ? <button type="button" onClick={() => void props.loadFindings()} disabled={props.footerBusy || props.refreshing} className="shrink-0 text-[11px] text-[var(--text-muted)] underline underline-offset-[3px] disabled:cursor-not-allowed disabled:opacity-45">Refresh findings</button> : null}</div></div>
+      <div style={{ display: "flex", flexDirection: "column", background: "var(--surface-1)", position: "relative" }}>
+        {props.footerBusy ? (
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "var(--border)", zIndex: 2 }}>
+            <div style={{ width: "42%", height: "100%", background: props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)", transition: "width 200ms linear" }} />
+          </div>
+        ) : null}
+
+        <div style={{ display: "grid", gridTemplateColumns: "168px minmax(0, 1fr)" }}>
+          <button
+            type="button"
+            onClick={() => void props.onPrimaryAction()}
+            disabled={props.footerBusy}
+            style={{
+              minHeight: 56,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: "none",
+              borderRight: "1px solid var(--border)",
+              color: props.footerBusy ? "var(--text-dim)" : props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a",
+              background: props.footerBusy ? "var(--surface-2)" : props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)",
+              boxShadow: props.primaryAction.stage === "apply" && !props.footerBusy ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : "none",
+              transition: "all var(--t)",
+            }}
+          >
+            <span>{props.footerBusy ? "Working..." : props.primaryAction.label}</span>
+            {!props.footerBusy ? <ArrowRightIcon color={props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a"} /> : null}
+          </button>
+
+          <div style={{ minWidth: 0, padding: "0 16px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+            <div className="num" style={{ fontSize: 12, color: props.error ? "var(--error)" : "var(--text)" }}>{props.error ?? queueHeadline}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ minWidth: 0, fontSize: 10, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{queueDetail}</div>
+              {latestSession ? (
+                <button type="button" onClick={() => props.onUndoTarget(latestSession)} disabled={props.footerBusy || props.undoingId !== null} style={textLinkStyle(props.footerBusy || props.undoingId !== null)}>
+                  Undo last session
+                </button>
+              ) : props.isAnalyzed ? (
+                <button type="button" onClick={() => void props.loadFindings()} disabled={props.footerBusy || props.refreshing} style={textLinkStyle(props.footerBusy || props.refreshing)}>
+                  Refresh findings
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function ActionIconButton(props: { title: string; onClick: () => void; disabled?: boolean; icon: "x" | "refresh" }): JSX.Element {
+function ReviewQueueRow({ row, expanded, onToggle }: { row: ReviewRow; expanded: boolean; onToggle: () => void }): JSX.Element {
+  const meta = kindMeta[row.kind];
   return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      disabled={props.disabled}
-      className="flex h-[30px] w-[30px] items-center justify-center rounded-[4px] border border-[var(--border)] text-[var(--text-muted)] disabled:cursor-not-allowed disabled:text-[var(--text-dim)] disabled:opacity-45"
-      title={props.title}
-    >
-      {props.icon === "refresh" ? (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M20 10a8 8 0 1 0 2 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ) : (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
-function PickerRow(props: {
-  label: string;
-  value: string;
-  buttonLabel: string;
-  onClick: () => void;
-  disabled?: boolean;
-  trailing?: JSX.Element;
-}): JSX.Element {
-  return (
-    <div className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)_auto_auto] items-center gap-2">
-      <span className="w-12 text-[11px] uppercase tracking-[0.06em] text-[var(--text-muted)]">{props.label}</span>
-      <div title={props.value} className="flex h-[30px] min-w-0 items-center gap-2 rounded-[4px] border border-[var(--border)] bg-[var(--surface-1)] px-2.5">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="var(--text-dim)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <span className="truncate text-[12px]" style={{ color: props.value === "-" ? "var(--text-dim)" : "var(--text)" }}>{props.value}</span>
-      </div>
-      <button type="button" onClick={props.onClick} disabled={props.disabled} className="h-[30px] rounded-[4px] border border-[var(--border-strong)] bg-[var(--surface-2)] px-3 text-[12px] text-[var(--text)] disabled:cursor-not-allowed disabled:text-[var(--text-dim)] disabled:opacity-45">{props.buttonLabel}</button>
-      {props.trailing ?? <div className="w-[30px]" />}
-    </div>
-  );
-}
-
-function QueueRow(props: { row: ReviewRow; expanded: boolean; onToggle: () => void }): JSX.Element {
-  const tone = kindColor[props.row.kind];
-  const sizeLabel = props.row.kind === "duplicate" ? props.row.detail : props.row.kind === "misplaced" ? "Route" : "0 B";
-  const statusLabel = props.row.kind === "duplicate" ? "Ready" : props.row.kind === "misplaced" ? "Review" : "Flagged";
-
-  return (
-    <div className="border-b border-[var(--border)]" style={{ background: props.expanded ? "var(--surface-1)" : "transparent" }}>
-      <div onClick={props.onToggle} className="grid cursor-pointer grid-cols-[28px_minmax(0,1fr)_92px_72px_120px_24px] items-center px-4 py-2.5 text-[12px]">
-        <input type="checkbox" checked readOnly aria-label={`${props.row.title} selected`} />
-        <span className="truncate pr-3 text-[var(--text)]">{props.row.title}</span>
-        <span className="w-fit rounded-[4px] border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 py-0.5 text-[11px] text-[var(--text-muted)]">{filterLabels[props.row.kind]}</span>
-        <span className="pr-4 text-right text-[var(--text-muted)]">{sizeLabel}</span>
-        <span className="inline-flex items-center gap-2 pl-2 text-[11px]"><span className="inline-block h-2 w-2 rounded-full" style={{ background: tone, opacity: 0.7 }} /> <span style={{ color: props.row.kind === "zero-byte" ? "var(--warn)" : "var(--text-muted)" }}>{statusLabel}</span></span>
-        <div className="flex justify-end text-[var(--text-dim)]">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d={props.expanded ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+    <div style={{ borderBottom: "1px solid var(--border)", background: expanded ? "var(--surface-1)" : "transparent", transition: "background var(--t)" }}>
+      <button type="button" title={row.title} onClick={onToggle} style={{ width: "100%", display: "grid", gridTemplateColumns: QUEUE_GRID_COLUMNS, alignItems: "center", padding: "10px 16px", cursor: "pointer", fontSize: 12, background: "transparent", border: "none", textAlign: "left" }}>
+        <input type="checkbox" checked readOnly aria-label="Finding selected" />
+        <span style={{ color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 12 }}>{baseName(row.path)}</span>
+        <span style={{ display: "inline-block", fontSize: 11, padding: "2px 8px", borderRadius: 4, border: "1px solid var(--border-strong)", color: "var(--text-muted)", background: "var(--surface-1)", width: "fit-content", whiteSpace: "nowrap" }}>{meta.badge}</span>
+        <span className="num" style={{ textAlign: "right", color: "var(--text-muted)", paddingRight: 16 }}>{rowSizeLabel(row)}</span>
+        <span title={row.detail} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.tone, display: "inline-block", opacity: 0.9 }} />
+          <span className="num" style={{ color: meta.tone, fontSize: 11 }}>{meta.status}</span>
+        </span>
+        <div style={{ display: "flex", justifyContent: "flex-end", color: "var(--text-dim)" }}>
+          {expanded ? <ChevronUpIcon color="var(--text-dim)" /> : <ChevronDownIcon color="var(--text-dim)" />}
         </div>
-      </div>
-      {props.expanded ? <div className="grid grid-cols-[84px_1fr] gap-x-3 gap-y-1 px-4 pb-[14px] text-[11px] text-[var(--text-muted)]"><span className="pt-0.5 text-[10px] uppercase tracking-[0.06em] text-[var(--text-dim)]">Detail</span><span>{props.row.detail}</span><span className="pt-0.5 text-[10px] uppercase tracking-[0.06em] text-[var(--text-dim)]">Action</span><span>{props.row.kind === "duplicate" ? "Quarantine extras" : props.row.kind === "misplaced" ? "Move by year" : "Review first"}</span><span className="pt-0.5 text-[10px] uppercase tracking-[0.06em] text-[var(--text-dim)]">Path</span><span className="break-all text-[var(--text)]">{props.row.path}</span></div> : null}
+      </button>
+
+      {expanded ? (
+        <div style={{ padding: "0 16px 14px", display: "grid", gridTemplateColumns: "84px 1fr", rowGap: 4, columnGap: 12, fontSize: 11, color: "var(--text-muted)", animation: "fadeIn 200ms ease-out" }}>
+          <DetailRow label="Path" value={row.path} />
+          <DetailRow label="Title" value={row.title} />
+          <DetailRow label="Detail" value={row.detail} />
+          <DetailRow label="Class" value={kindMeta[row.kind].badge} />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function RightSection(props: { title: string; children: ReactNode }): JSX.Element {
-  return <div className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-3"><div className="flex items-center justify-between"><div className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">{props.title}</div><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 9l6 6 6-6" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></div>{props.children}</div>;
+function PickerRow({ label, value, onPick, trailing, disabled }: { label: string; value: string | null; onPick: () => void; trailing?: ReactNode; disabled: boolean }): JSX.Element {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "68px minmax(0, 1fr) auto auto", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <span style={{ width: 68, fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, height: 30, minWidth: 0, padding: "0 10px", background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: 4 }}>
+        <FolderIcon />
+        <span className="num" style={{ flex: 1, fontSize: 12, color: value ? "var(--text)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || "-"}</span>
+      </div>
+      <button type="button" onClick={onPick} disabled={disabled} style={{ height: 30, padding: "0 12px", fontSize: 12, color: disabled ? "var(--text-dim)" : "var(--text)", border: "1px solid var(--border-strong)", borderRadius: 4, background: "var(--surface-2)", opacity: disabled ? 0.45 : 1, transition: "all var(--t)" }}>
+        Browse
+      </button>
+      {trailing || <div style={{ width: 30 }} />}
+    </div>
+  );
+}function RightSection({ title, children }: { title: string; children: ReactNode }): JSX.Element {
+  return (
+    <section style={{ padding: "14px 16px 18px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>{title}</span>
+        <ChevronDownIcon color="var(--text-dim)" />
+      </div>
+      {children}
+    </section>
+  );
 }
 
-function InfoRow(props: { label: string; value: string; muted?: boolean }): JSX.Element {
-  return <div className="grid grid-cols-[84px_1fr] gap-2"><span className="pt-0.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-dim)]">{props.label}</span><span className="text-[12px]" style={{ color: props.muted ? "var(--text-muted)" : "var(--text)" }}>{props.value}</span></div>;
+function Field({ label, helper, children }: { label: string; helper: string; children: ReactNode }): JSX.Element {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontSize: 11, color: "var(--text)", fontWeight: 600 }}>{label}</span>
+        <span style={{ fontSize: 10, color: "var(--text-dim)", lineHeight: 1.5 }}>{helper}</span>
+      </div>
+      {children}
+    </div>
+  );
 }
 
-function WindowBtn(props: { label: string; onClick: () => void; danger?: boolean; children: ReactNode }): JSX.Element {
+function SegmentedControl({ options, active, onSelect }: { options: { value: DashboardSurfaceFilter; label: string }[]; active: DashboardSurfaceFilter; onSelect: (value: DashboardSurfaceFilter) => void }): JSX.Element {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      {options.map((option) => {
+        const selected = option.value === active;
+        return (
+          <button key={option.value} type="button" onClick={() => onSelect(option.value)} style={{ minHeight: 34, padding: "0 10px", borderRadius: 4, border: "1px solid var(--border)", background: selected ? "var(--surface-3)" : "var(--surface-1)", color: selected ? "var(--text)" : "var(--text-muted)", fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "all var(--t)" }}>
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MetricPill({ label, value, active }: { label: string; value: string; active: boolean }): JSX.Element {
+  return (
+    <div style={{ minHeight: 50, borderRadius: 6, border: "1px solid var(--border)", background: active ? "rgba(62, 207, 142, 0.06)" : "var(--surface-1)", padding: "8px 12px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+      <span style={{ fontSize: 10, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+      <span className="num" style={{ fontSize: 16, color: active ? "var(--accent)" : "var(--text)" }}>{value}</span>
+    </div>
+  );
+}
+
+function InlineAlert({ message }: { message: string }): JSX.Element {
+  return <div style={{ margin: 16, padding: "10px 12px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.25)", background: "rgba(239,68,68,0.10)", color: "#fca5a5", fontSize: 12 }}>{message}</div>;
+}
+
+function EmptyNotice({ children }: { children: ReactNode }): JSX.Element {
+  return <div style={{ padding: 32, textAlign: "center", color: "var(--text-dim)", fontSize: 12 }}>{children}</div>;
+}
+
+function DetailRow({ label, value }: { label: string; value: string }): JSX.Element {
+  return (
+    <>
+      <span style={{ color: "var(--text-dim)", textTransform: "uppercase", fontSize: 10, letterSpacing: "0.06em", paddingTop: 2 }}>{label}</span>
+      <span className="num" style={{ color: "var(--text)", wordBreak: "break-all" }}>{value}</span>
+    </>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }): JSX.Element {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, fontSize: 11 }}>
+      <span style={{ color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+      <span className="num" style={{ color: "var(--text-muted)", textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
+function WindowBtn({ icon, onClick, danger, label }: { icon: ReactNode; onClick: () => void; danger?: boolean; label: string }): JSX.Element {
   const [hover, setHover] = useState(false);
-
   return (
     <button
       type="button"
-      aria-label={props.label}
-      onClick={props.onClick}
+      aria-label={label}
+      onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="flex h-7 w-8 items-center justify-center rounded-[4px]"
       style={{
-        background: hover ? (props.danger ? "var(--error)" : "var(--surface-3)") : "transparent",
-        color: hover && props.danger ? "#fff" : "var(--text-muted)",
+        width: 32,
+        height: 28,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 4,
+        background: hover ? (danger ? "var(--error)" : "var(--surface-3)") : "transparent",
+        color: hover && danger ? "#fff" : "var(--text-muted)",
         transition: "all var(--t)",
       }}
     >
-      {props.children}
+      {icon}
     </button>
   );
 }
 
-function Field(props: { label: string; helper: string; children: ReactNode }): JSX.Element {
-  return <div className="space-y-2"><div className="text-[11px] text-[var(--text)]">{props.label}</div><div className="text-[11px] leading-7 text-[var(--text-dim)]">{props.helper}</div>{props.children}</div>;
+function Logo(): JSX.Element {
+  return (
+    <div style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: "var(--surface-3)", border: "1px solid var(--border-strong)", flexShrink: 0 }}>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+        <rect x="1" y="1" width="2" height="10" fill="var(--text)" />
+        <rect x="9" y="1" width="2" height="10" fill="var(--text)" />
+        <rect x="4" y="3" width="4" height="1.5" fill="var(--accent)" />
+        <rect x="4" y="7.5" width="4" height="1.5" fill="var(--accent)" />
+      </svg>
+    </div>
+  );
 }
 
-function SegmentedButtons(props: { options: string[]; active: string; onSelect: (value: string) => void; readonly?: boolean }): JSX.Element {
-  return <div className="grid grid-cols-2 gap-2 rounded-[6px] border border-[var(--border)] bg-[var(--surface-1)] p-1">{props.options.map((option) => <button key={option} type="button" onClick={() => props.onSelect(option)} disabled={props.readonly} className="h-[42px] rounded-[6px] px-3 text-[12px] transition-colors disabled:cursor-default" style={{ background: props.active === option ? "var(--surface-3)" : "transparent", color: props.active === option ? "var(--text)" : "var(--text-muted)" }}>{option}</button>)}</div>;
+function FolderIcon(): JSX.Element {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M3 6.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2h9A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-11Z" stroke="var(--text-dim)" strokeWidth="1.5" /></svg>;
 }
 
-function Meter(props: { label: string; value: number; detail: string; tone: "accent" | "muted" | "warn" }): JSX.Element {
-  const color = props.tone === "accent" ? "var(--accent)" : props.tone === "warn" ? "var(--warn)" : "var(--text-muted)";
-  return <div className="flex min-w-0 flex-col gap-1"><div className="flex items-baseline justify-between gap-2"><span className="text-[11px] text-[var(--text)]">{props.label}</span><span className="truncate text-[10px]" style={{ color }}>{props.detail}</span></div><div className="h-1 rounded-[999px] bg-[var(--border)]"><div className="h-1 rounded-[999px]" style={{ width: `${Math.max(0, Math.min(100, props.value))}%`, background: color }} /></div></div>;
+function RefreshIcon(): JSX.Element {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M20 4v5h-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function SearchIcon(): JSX.Element {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><circle cx="11" cy="11" r="6.5" stroke="var(--text-dim)" strokeWidth="1.5" /><path d="M16 16l4 4" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round" /></svg>;
+}function ArrowRightIcon({ color }: { color: string }): JSX.Element {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12h14M13 5l7 7-7 7" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function ChevronDownIcon({ color }: { color: string }): JSX.Element {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 9l6 6 6-6" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function ChevronUpIcon({ color }: { color: string }): JSX.Element {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 15l6-6 6 6" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function MinimizeIcon(): JSX.Element {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>;
+}
+
+function MaximizeIcon(): JSX.Element {
+  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 5h14v14H5z" stroke="currentColor" strokeWidth="1.5" /></svg>;
+}
+
+function CloseIcon(): JSX.Element {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>;
+}
+
+function compactMetric(bytes: number): { value: string; suffix: string } {
+  if (bytes < 1024) return { value: String(bytes), suffix: "B" };
+  if (bytes < 1024 * 1024) return { value: (bytes / 1024).toFixed(bytes >= 1024 * 10 ? 0 : 1), suffix: "KB" };
+  if (bytes < 1024 * 1024 * 1024) return { value: (bytes / 1024 / 1024).toFixed(bytes >= 1024 * 1024 * 10 ? 0 : 1), suffix: "MB" };
+  return { value: (bytes / 1024 / 1024 / 1024).toFixed(bytes >= 1024 * 1024 * 1024 * 10 ? 0 : 1), suffix: "GB" };
+}
+
+function baseName(path: string): string {
+  const segments = path.split(/[\\/]/);
+  return segments[segments.length - 1] || path;
+}
+
+function rowSizeLabel(row: ReviewRow): string {
+  if (row.kind === "zero-byte") return "0 B";
+  return row.kind === "duplicate" ? "Cluster" : "Date";
+}
+
+function sectionHeading(stage: PrimaryActionState["stage"]): string {
+  if (stage === "apply") return "Plan ready";
+  if (stage === "build") return "Review";
+  if (stage === "analyze") return "Analyze";
+  return "Select";
+}
+
+function textLinkStyle(disabled: boolean): CSSProperties {
+  return {
+    flexShrink: 0,
+    fontSize: 11,
+    color: disabled ? "var(--text-dim)" : "var(--text-muted)",
+    textDecoration: "underline",
+    textDecorationColor: "var(--border-strong)",
+    textUnderlineOffset: 3,
+    opacity: disabled ? 0.45 : 1,
+  };
 }
