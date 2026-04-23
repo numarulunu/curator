@@ -94,6 +94,33 @@ def test_scan_batches_commits(db: Path, tmp_path: Path):
         con.close()
 
 
+def test_scan_returns_zero_for_accessible_root_with_only_unsupported_files(
+    db: Path, tmp_path: Path
+):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    supported = archive / "keep.jpg"
+    supported.write_bytes(b"jpeg")
+
+    first = scan.scan(str(archive))
+    assert first == {"scanned": 1, "root": str(archive)}
+
+    supported.unlink()
+    (archive / "notes.txt").write_text("plain text", encoding="utf-8")
+    (archive / "manifest.json").write_text("{}", encoding="utf-8")
+
+    result = scan.scan(str(archive))
+
+    assert result == {"scanned": 0, "root": str(archive)}
+
+    con = sqlite3.connect(str(db))
+    try:
+        rows = con.execute("SELECT path FROM files ORDER BY path").fetchall()
+        assert rows == []
+    finally:
+        con.close()
+
+
 def test_scan_stages_rows_in_batches_before_swapping(db: Path, tmp_path: Path, monkeypatch):
     archive = tmp_path / "archive"
     archive.mkdir()

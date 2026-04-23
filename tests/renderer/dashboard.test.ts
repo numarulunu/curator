@@ -63,8 +63,8 @@ describe("buildReviewRows", () => {
         key: "duplicate:hash-1",
         kind: "duplicate",
         path: "D:/archive/2015/a.jpg",
-        title: "3 identical files",
-        detail: "2 extra copies",
+        title: "Exact duplicate cluster (3 files)",
+        detail: "2 extra byte-identical copies",
       },
       {
         key: "misplaced:11",

@@ -38,6 +38,15 @@ def test_handles_non_ascii_paths(tmp_path):
     assert "\u201eOVIDIUS" in results[0].path
 
 
+def test_walk_skips_unsupported_files_without_raising(tmp_path):
+    (tmp_path / "notes.txt").write_text("plain text", encoding="utf-8")
+    (tmp_path / "manifest.json").write_text("{}", encoding="utf-8")
+
+    results = list(walk(str(tmp_path)))
+
+    assert results == []
+
+
 def test_walk_raises_scan_root_error_when_root_cannot_be_opened(monkeypatch):
     from curator.walker import ScanRootError
 

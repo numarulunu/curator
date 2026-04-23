@@ -131,7 +131,10 @@ describe("DashboardSurface", () => {
     );
 
     expect(markup).toContain("No supported media files were indexed");
+    expect(markup).toContain("Check that the selected folder contains supported photo/video formats and that Curator can access it.");
+    expect(markup).not.toContain("exact byte-identical duplicates only");
   });
+
   test("labels duplicate findings as exact-match clusters instead of raw file totals", () => {
     const rows = buildReviewRows(
       [
