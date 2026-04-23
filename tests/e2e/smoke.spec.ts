@@ -17,9 +17,10 @@ test("app launches with working sidecar", async () => {
   try {
     const win = await app.firstWindow();
     await expect(win.locator("h1")).toHaveText("Curator", { timeout: 10_000 });
-    await expect(win.getByText("Sidecar Online")).toBeVisible({ timeout: 10_000 });
-    await expect(win.locator("section").getByText("Choose an archive to begin")).toBeVisible({ timeout: 10_000 });
-    await expect(win.getByRole("button", { name: "Select Archive" })).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByText("Archive review workspace").first()).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByText("Analyze archive to inspect duplicates, misplaced files, and zero-byte files.")).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByRole("button", { name: "Browse" }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(win.getByText("Filters")).toBeVisible({ timeout: 10_000 });
   } finally {
     await app.close();
     rmSync(stateRoot, { recursive: true, force: true });
