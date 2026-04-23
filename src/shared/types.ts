@@ -37,6 +37,7 @@ export interface Session {
   completed_at: string | null;
   kind: string;
   action_count: number;
+  pending_count: number;
 }
 
 export interface CuratorApi {
@@ -57,6 +58,7 @@ export interface CuratorApi {
   applyProposals: (archiveRoot: string, proposals: Proposal[], outputRoot?: string | null) => Promise<ApplyResult>;
   listSessions: () => Promise<Session[]>;
   undoSession: (id: string) => Promise<{ restored: number; failed: number; errors?: ApplyError[]; session_id: string }>;
+  retrySession: (sessionId: string) => Promise<ApplyResult>;
   onEvent: (listener: (params: { kind: string; [k: string]: unknown }) => void) => () => void;
 }
 

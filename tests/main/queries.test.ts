@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Database from "better-sqlite3";
 import { openDb, runMigrations } from "@main/db";
-import { listMisplacedByDate, listZeroByte } from "@main/queries";
+import { listMisplacedByDate, listSessions, listZeroByte } from "@main/queries";
 
 describe("queries", () => {
   let dir: string;
@@ -39,5 +39,34 @@ describe("queries", () => {
     ins.run("/other/out.jpg", 0);
 
     expect(listZeroByte(db, "/archive").map((row) => row.path)).toEqual(["/archive/in.jpg"]);
+  });
+});
+
+describe("listSessions pending_count", () => {
+  let dir: string;
+  let db: Database.Database;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "sessions-"));
+    db = openDb(join(dir, "index.db"));
+    runMigrations(db);
+  });
+
+  afterEach(() => {
+    db.close();
+    try { rmSync(dir, { recursive: true, force: true }); } catch { /* windows EBUSY */ }
+  });
+
+  it("counts rows with status='pending' per session", () => {
+    db.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'apply')").run("s1");
+    const ins = db.prepare("INSERT INTO actions (session_id, action, src_path, status) VALUES (?, 'quarantine', ?, ?)");
+    ins.run("s1", "/arc/a.jpg", "applied");
+    ins.run("s1", "/arc/b.jpg", "pending");
+    ins.run("s1", "/arc/c.jpg", "pending");
+
+    const rows = listSessions(db);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].action_count).toBe(3);
+    expect(rows[0].pending_count).toBe(2);
   });
 });

@@ -32,6 +32,7 @@ describe("sessionStatus", () => {
       completed_at: null,
       kind: "apply",
       action_count: 3,
+      pending_count: 0,
     };
 
     expect(sessionStatus(session)).toBe("active");
@@ -44,6 +45,7 @@ describe("sessionStatus", () => {
       completed_at: "2026-04-22T10:01:00Z",
       kind: "apply",
       action_count: 3,
+      pending_count: 0,
     };
 
     expect(sessionStatus(session)).toBe("complete");

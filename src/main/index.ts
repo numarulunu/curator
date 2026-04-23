@@ -12,7 +12,7 @@ import type {
   ScanResult,
   SidecarVersion,
 } from "@shared/types";
-import { applyProposals } from "./apply";
+import { applyProposals, retrySession } from "./apply";
 import { undoSession } from "./undo";
 import { openDb, runMigrations } from "./db";
 import { reconcileInterruptedSessions } from "./reconcile";
@@ -190,6 +190,10 @@ ipcMain.handle("curator:listSessions", async (): Promise<SessionRow[]> => {
 ipcMain.handle("curator:undoSession", async (_event, id: string) => {
   await ensureBackendReady();
   return undoSession(db!, sidecar!, id);
+});
+ipcMain.handle("curator:retrySession", async (_event, id: string) => {
+  await ensureBackendReady();
+  return retrySession(db!, sidecar!, id);
 });
 
 app.whenReady().then(async () => {

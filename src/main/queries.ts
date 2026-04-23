@@ -66,12 +66,14 @@ export interface SessionRow {
   completed_at: string | null;
   kind: string;
   action_count: number;
+  pending_count: number;
 }
 
 export function listSessions(db: Database.Database): SessionRow[] {
   return db.prepare(`
     SELECT s.id, s.started_at, s.completed_at, s.kind,
-           (SELECT COUNT(*) FROM actions a WHERE a.session_id = s.id) AS action_count
+           (SELECT COUNT(*) FROM actions a WHERE a.session_id = s.id) AS action_count,
+           (SELECT COUNT(*) FROM actions a WHERE a.session_id = s.id AND a.status = 'pending') AS pending_count
       FROM sessions s
      ORDER BY s.started_at DESC
   `).all() as SessionRow[];

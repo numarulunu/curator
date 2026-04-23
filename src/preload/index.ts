@@ -19,6 +19,7 @@ const api: CuratorApi = {
   applyProposals: (archiveRoot, proposals, outputRoot) => ipcRenderer.invoke("curator:applyProposals", archiveRoot, proposals, outputRoot),
   listSessions: () => ipcRenderer.invoke("curator:listSessions"),
   undoSession: (id: string) => ipcRenderer.invoke("curator:undoSession", id),
+  retrySession: (sessionId: string) => ipcRenderer.invoke("curator:retrySession", sessionId),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);
