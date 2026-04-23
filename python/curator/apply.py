@@ -51,6 +51,10 @@ def apply_actions(actions: list[dict[str, Any]], archive_root: str, session_id: 
     session_path = sessions_root / f"{session_id}.json"
 
     def append_jsonl(entry: dict) -> None:
+        # fsync the file only — NTFS does not durably commit the directory
+        # inode on the same call, so a power loss within seconds of the first
+        # write to a new .jsonl may still erase the file creation. Process
+        # kill (force-quit) is safe.
         with open(jsonl_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
             f.flush()

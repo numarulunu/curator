@@ -144,4 +144,28 @@ describe("reconcileInterruptedSessions", () => {
     const row = db.prepare("SELECT status FROM actions WHERE session_id = ?").get("done") as { status: string };
     expect(row.status).toBe("applied");
   });
+
+  it("tolerates a truncated final line in the .jsonl and only counts the complete lines", () => {
+    seedPendingSession("s-truncate", ["/arc/a.jpg", "/arc/b.jpg", "/arc/c.jpg"]);
+
+    // Write header + two well-formed body lines + one truncated body line.
+    const goodLines = [
+      JSON.stringify({ __header__: true, archive_root: "/arc", output_root: null }),
+      JSON.stringify({ action: "quarantine", src: "/arc/a.jpg", dst: "/arc/_q/a.jpg", reason: "dup" }),
+      JSON.stringify({ action: "quarantine", src: "/arc/b.jpg", dst: "/arc/_q/b.jpg", reason: "dup" }),
+    ].join("\n");
+    const truncatedTail = "\n{\"action\":\"quarantin"; // no closing brace, no newline
+    writeFileSync(join(sessionsDir, "s-truncate.jsonl"), goodLines + truncatedTail);
+
+    const summary = reconcileInterruptedSessions(db, dir);
+
+    expect(summary.interrupted).toBe(1);
+    const rows = db.prepare("SELECT src_path, status FROM actions WHERE session_id = 's-truncate' ORDER BY src_path").all();
+    expect(rows).toEqual([
+      { src_path: "/arc/a.jpg", status: "applied" },
+      { src_path: "/arc/b.jpg", status: "applied" },
+      // c.jpg stays pending — the truncated line for it failed to parse and was skipped.
+      { src_path: "/arc/c.jpg", status: "pending" },
+    ]);
+  });
 });

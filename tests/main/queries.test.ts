@@ -57,16 +57,25 @@ describe("listSessions pending_count", () => {
     try { rmSync(dir, { recursive: true, force: true }); } catch { /* windows EBUSY */ }
   });
 
-  it("counts rows with status='pending' per session", () => {
-    db.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'apply')").run("s1");
+  it("counts pending rows only for apply sessions", () => {
+    db.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'apply')").run("s-apply");
+    db.prepare("INSERT INTO sessions (id, started_at, kind) VALUES (?, datetime('now'), 'undo')").run("s-undo");
     const ins = db.prepare("INSERT INTO actions (session_id, action, src_path, status) VALUES (?, 'quarantine', ?, ?)");
-    ins.run("s1", "/arc/a.jpg", "applied");
-    ins.run("s1", "/arc/b.jpg", "pending");
-    ins.run("s1", "/arc/c.jpg", "pending");
+    ins.run("s-apply", "/arc/a.jpg", "applied");
+    ins.run("s-apply", "/arc/b.jpg", "pending");
+    ins.run("s-apply", "/arc/c.jpg", "pending");
+    // Action rows shouldn't exist for undo sessions in practice, but the SQL must
+    // refuse to count them even if they ever do.
+    ins.run("s-undo", "/arc/d.jpg", "pending");
 
     const rows = listSessions(db);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].action_count).toBe(3);
-    expect(rows[0].pending_count).toBe(2);
+    const apply = rows.find((r) => r.id === "s-apply");
+    const undoRow = rows.find((r) => r.id === "s-undo");
+    expect(apply).toBeDefined();
+    expect(apply!.pending_count).toBe(2);
+    expect(apply!.action_count).toBe(3);
+    expect(undoRow).toBeDefined();
+    expect(undoRow!.pending_count).toBe(0);
+    expect(undoRow!.action_count).toBe(1);
   });
 });
