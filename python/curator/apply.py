@@ -45,11 +45,26 @@ def apply_actions(actions: list[dict[str, Any]], archive_root: str, session_id: 
     quarantine_base = Path(output_root) if output_root else archive
     quarantine_root = quarantine_base / "_curator_quarantine" / session_id
 
+    sessions_root = Path(os.environ.get("LOCALAPPDATA", str(archive))) / "Curator" / "sessions"
+    sessions_root.mkdir(parents=True, exist_ok=True)
+    jsonl_path = sessions_root / f"{session_id}.jsonl"
+    session_path = sessions_root / f"{session_id}.json"
+
+    def append_jsonl(entry: dict) -> None:
+        with open(jsonl_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+
+    append_jsonl({"__header__": True, "archive_root": archive_root, "output_root": output_root})
+
     for action in actions:
         kind = action["action"]
         src = Path(action["src_path"])
 
         try:
+            if not src.exists():
+                raise FileNotFoundError(f"src no longer exists: {src}")
             if kind == "quarantine":
                 rel = _relpath_under(str(archive), str(src))
                 destination = _ensure_unique(quarantine_root / "dup" / rel, src)
@@ -63,22 +78,19 @@ def apply_actions(actions: list[dict[str, Any]], archive_root: str, session_id: 
 
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src), str(destination))
-            manifest.append(
-                {
-                    "action": str(kind),
-                    "src": str(src),
-                    "dst": str(destination),
-                    "reason": action.get("reason"),
-                }
-            )
+            entry = {
+                "action": str(kind),
+                "src": str(src),
+                "dst": str(destination),
+                "reason": action.get("reason"),
+            }
+            manifest.append(entry)
+            append_jsonl(entry)
             ok += 1
         except Exception as exc:
             failed += 1
             errors.append({"src": str(src), "error": str(exc)})
 
-    sessions_root = Path(os.environ.get("LOCALAPPDATA", str(archive))) / "Curator" / "sessions"
-    sessions_root.mkdir(parents=True, exist_ok=True)
-    session_path = sessions_root / f"{session_id}.json"
     session_path.write_text(
         json.dumps(
             {
