@@ -94,6 +94,41 @@ def test_scan_batches_commits(db: Path, tmp_path: Path):
         con.close()
 
 
+def test_scan_stages_rows_in_batches_before_swapping(db: Path, tmp_path: Path, monkeypatch):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    for i in range(1200):
+        (archive / f"{i:04d}.jpg").write_bytes(b"x")
+
+    real_connect = scan.connect
+    batch_sizes: list[int] = []
+
+    class RecordingConnection:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def execute(self, *args, **kwargs):
+            return self._inner.execute(*args, **kwargs)
+
+        def executemany(self, sql, seq_of_parameters):
+            rows = list(seq_of_parameters)
+            batch_sizes.append(len(rows))
+            return self._inner.executemany(sql, rows)
+
+        def close(self):
+            return self._inner.close()
+
+    def fake_connect():
+        return RecordingConnection(real_connect())
+
+    monkeypatch.setattr(scan, "connect", fake_connect)
+
+    result = scan.scan(str(archive), batch_size=500)
+    assert result["scanned"] == 1200
+    assert batch_sizes == [500, 500, 200]
+
+
+
 def test_scan_emits_progress_events_per_batch(db: Path, tmp_path: Path, monkeypatch):
     archive = tmp_path / "archive"
     archive.mkdir()
@@ -140,6 +175,36 @@ def test_scan_replaces_existing_rows_for_same_root(db: Path, tmp_path: Path):
         assert rows == [(str(keep),)]
     finally:
         con.close()
+
+
+def test_scan_keeps_prior_rows_when_replacement_walk_fails(
+    db: Path, tmp_path: Path, monkeypatch
+):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    original = archive / "keep.jpg"
+    original.write_bytes(b"jpeg")
+
+    first = scan.scan(str(archive))
+    assert first["scanned"] == 1
+
+    def fake_walk(_root):
+        raise ScanRootError("replacement walk failed")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(scan, "walk", fake_walk)
+
+    with pytest.raises(ScanRootError, match="replacement walk failed"):
+        scan.scan(str(archive))
+
+    con = sqlite3.connect(str(db))
+    try:
+        rows = con.execute("SELECT path FROM files ORDER BY path").fetchall()
+        assert rows == [(str(original),)]
+    finally:
+        con.close()
+
+
 def test_scan_raises_when_root_cannot_be_opened(db: Path, monkeypatch):
     def fake_walk(_root):
         raise ScanRootError("Could not open scan root '/blocked': denied")
