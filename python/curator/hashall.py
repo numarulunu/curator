@@ -10,6 +10,13 @@ from curator.rpc import emit_event
 _UPDATE_SQL = "UPDATE files SET xxhash = ? WHERE id = ?"
 
 
+def _root_filter(root: str | None) -> tuple[str, tuple[object, ...]]:
+    if not root:
+        return "", ()
+    normalized = root.rstrip("/\\")
+    return " AND (path = ? OR path LIKE ? OR path LIKE ?)", (normalized, f"{normalized}/%", f"{normalized}\\%")
+
+
 def _flush(conn, batch: List[Tuple[str, int]]) -> None:
     if not batch:
         return
@@ -26,7 +33,7 @@ def _flush(conn, batch: List[Tuple[str, int]]) -> None:
         raise
 
 
-def hash_all(batch_size: int = 200) -> dict:
+def hash_all(batch_size: int = 200, root: str | None = None) -> dict:
     """Compute xxhash for all files where xxhash IS NULL.
 
     Commits updates in batches of ``batch_size`` and emits ``hash.progress``
@@ -42,8 +49,10 @@ def hash_all(batch_size: int = 200) -> dict:
     hashed = 0
     skipped = 0
     try:
+        root_sql, root_params = _root_filter(root)
         rows = conn.execute(
-            "SELECT id, path FROM files WHERE xxhash IS NULL ORDER BY id"
+            f"SELECT id, path FROM files WHERE xxhash IS NULL{root_sql} ORDER BY id",
+            root_params,
         ).fetchall()
         total = len(rows)
 

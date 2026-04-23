@@ -29,7 +29,8 @@ export function ZeroByte(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      setRows(await window.curator.listZeroByte());
+      if (!archiveRoot) return;
+      setRows(await window.curator.listZeroByte(archiveRoot));
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
       setError(message);

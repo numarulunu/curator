@@ -14,6 +14,23 @@ _INSERT_SQL = (
 )
 
 
+def _delete_existing_rows_for_root(conn, root: str) -> None:
+    normalized = root.rstrip("/\\")
+    conn.execute("BEGIN")
+    try:
+        conn.execute(
+            "DELETE FROM files WHERE path = ? OR path LIKE ? OR path LIKE ?",
+            (normalized, f"{normalized}/%", f"{normalized}\\%"),
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        raise
+
+
 def _flush(conn, batch: List[WalkedFile]) -> None:
     if not batch:
         return
@@ -45,6 +62,7 @@ def scan(root: str, batch_size: int = 500) -> dict:
     total = 0
     batch: List[WalkedFile] = []
     try:
+        _delete_existing_rows_for_root(conn, root)
         for wf in walk(root):
             batch.append(wf)
             if len(batch) >= batch_size:

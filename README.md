@@ -29,7 +29,7 @@ Perceptual dedup, Motion Photo detection, burst detection, screenshot detection,
     pnpm run build:sidecar
     pnpm run build
 
-Output: `release/Curator-Setup-0.1.9.exe` plus `latest.yml` for auto-update publishing.
+Output: `release/Curator-Setup-0.1.10.exe` plus `latest.yml` for auto-update publishing.
 
 To build, publish, silently install on this PC, and relaunch the installed app in one step, run `pnpm run ship:win`.
 

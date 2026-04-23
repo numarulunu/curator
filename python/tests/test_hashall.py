@@ -130,3 +130,33 @@ def test_hash_all_emits_progress_events(db: Path, tmp_path: Path, monkeypatch):
 
     hashed_values = [payload["hashed"] for _, payload in captured]
     assert hashed_values == sorted(hashed_values)
+
+
+def test_hash_all_can_scope_to_root(db: Path, tmp_path: Path):
+    archive_a = tmp_path / "archive-a"
+    archive_b = tmp_path / "archive-b"
+    archive_a.mkdir()
+    archive_b.mkdir()
+    a_file = archive_a / "a.bin"
+    b_file = archive_b / "b.bin"
+    a_file.write_bytes(b"alpha")
+    b_file.write_bytes(b"beta")
+
+    con = sqlite3.connect(str(db))
+    try:
+        _insert(con, str(a_file))
+        _insert(con, str(b_file))
+        con.commit()
+    finally:
+        con.close()
+
+    result = hashall.hash_all(root=str(archive_a))
+    assert result == {"hashed": 1, "skipped": 0}
+
+    con = sqlite3.connect(str(db))
+    try:
+        rows = con.execute("SELECT path, xxhash FROM files ORDER BY path").fetchall()
+        assert rows[0][1] is not None
+        assert rows[1][1] is None
+    finally:
+        con.close()

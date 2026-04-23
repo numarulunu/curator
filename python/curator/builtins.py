@@ -45,7 +45,7 @@ from curator import hashall as _hashall
 
 @register("hashAll")
 def _hashall_handler(params: dict) -> dict:
-    return _hashall.hash_all(params.get("batch_size", 200))
+    return _hashall.hash_all(params.get("batch_size", 200), params.get("root"))
 
 
 from curator import clusters as _clusters
@@ -53,16 +53,24 @@ from curator import clusters as _clusters
 
 @register("duplicatesExact")
 def _duplicates_exact_handler(_params: dict) -> list:
-    return _clusters.duplicates_exact()
+    return _clusters.duplicates_exact(_params.get("root"))
 
 
 @register("resolveDates")
 def _resolve_dates_handler(_params: dict) -> dict:
     con = connect()
     try:
-        rows = con.execute(
-            "SELECT id, path, mtime_ns FROM files WHERE canonical_date IS NULL"
-        ).fetchall()
+        root = _params.get("root")
+        if root:
+            normalized = root.rstrip("/\\")
+            rows = con.execute(
+                "SELECT id, path, mtime_ns FROM files WHERE canonical_date IS NULL AND (path = ? OR path LIKE ? OR path LIKE ?)",
+                (normalized, f"{normalized}/%", f"{normalized}\\%"),
+            ).fetchall()
+        else:
+            rows = con.execute(
+                "SELECT id, path, mtime_ns FROM files WHERE canonical_date IS NULL"
+            ).fetchall()
         if not rows:
             return {"resolved": 0}
         paths = [r[1] for r in rows]

@@ -48,11 +48,11 @@ export interface CuratorApi {
   closeWindow: () => Promise<void>;
   pickFolder: () => Promise<string | null>;
   scan: (root: string) => Promise<ScanResult>;
-  hashAll: () => Promise<HashAllResult>;
-  duplicatesExact: () => Promise<DuplicateCluster[]>;
-  resolveDates: () => Promise<ResolveDatesResult>;
-  listMisplaced: () => Promise<MisplacedFile[]>;
-  listZeroByte: () => Promise<ZeroByteFile[]>;
+  hashAll: (root: string) => Promise<HashAllResult>;
+  duplicatesExact: (root: string) => Promise<DuplicateCluster[]>;
+  resolveDates: (root: string) => Promise<ResolveDatesResult>;
+  listMisplaced: (archiveRoot: string) => Promise<MisplacedFile[]>;
+  listZeroByte: (archiveRoot: string) => Promise<ZeroByteFile[]>;
   buildProposals: (archiveRoot: string) => Promise<Proposal[]>;
   applyProposals: (archiveRoot: string, proposals: Proposal[]) => Promise<ApplyResult>;
   listSessions: () => Promise<Session[]>;

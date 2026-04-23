@@ -1,5 +1,13 @@
 ﻿import type Database from "better-sqlite3";
 
+function scopeClause(archiveRoot: string): { sql: string; params: [string, string, string] } {
+  const normalized = archiveRoot.replace(/[\\/]+$/, "");
+  return {
+    sql: " AND (path = ? OR path LIKE ? OR path LIKE ?)",
+    params: [normalized, `${normalized}/%`, `${normalized}\\%`],
+  };
+}
+
 export interface MisplacedFile {
   id: number;
   path: string;
@@ -9,12 +17,13 @@ export interface MisplacedFile {
   canonical_year: number;
 }
 
-export function listMisplacedByDate(db: Database.Database): MisplacedFile[] {
+export function listMisplacedByDate(db: Database.Database, archiveRoot: string): MisplacedFile[] {
+  const scope = scopeClause(archiveRoot);
   const rows = db.prepare(`
     SELECT id, path, canonical_date, date_source
       FROM files
-     WHERE canonical_date IS NOT NULL
-  `).all() as Array<{ id: number; path: string; canonical_date: string; date_source: string }>;
+     WHERE canonical_date IS NOT NULL${scope.sql}
+  `).all(...scope.params) as Array<{ id: number; path: string; canonical_date: string; date_source: string }>;
 
   const out: MisplacedFile[] = [];
   for (const r of rows) {
@@ -41,13 +50,14 @@ export interface ZeroByteFile {
   path: string;
 }
 
-export function listZeroByte(db: Database.Database): ZeroByteFile[] {
+export function listZeroByte(db: Database.Database, archiveRoot: string): ZeroByteFile[] {
+  const scope = scopeClause(archiveRoot);
   return db.prepare(`
     SELECT id, path
       FROM files
-     WHERE size = 0
+     WHERE size = 0${scope.sql}
   ORDER BY path
-  `).all() as ZeroByteFile[];
+  `).all(...scope.params) as ZeroByteFile[];
 }
 
 export interface SessionRow {

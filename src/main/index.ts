@@ -141,25 +141,25 @@ ipcMain.handle("curator:scan", async (_event, root: string): Promise<ScanResult>
   await ensureBackendReady();
   return await sidecar!.call<ScanResult>("scan", { root });
 });
-ipcMain.handle("curator:hashAll", async (): Promise<HashAllResult> => {
+ipcMain.handle("curator:hashAll", async (_event, root: string): Promise<HashAllResult> => {
   await ensureBackendReady();
-  return await sidecar!.call<HashAllResult>("hashAll", {});
+  return await sidecar!.call<HashAllResult>("hashAll", { root });
 });
-ipcMain.handle("curator:duplicatesExact", async (): Promise<DuplicateCluster[]> => {
+ipcMain.handle("curator:duplicatesExact", async (_event, root: string): Promise<DuplicateCluster[]> => {
   await ensureBackendReady();
-  return await sidecar!.call<DuplicateCluster[]>("duplicatesExact", {});
+  return await sidecar!.call<DuplicateCluster[]>("duplicatesExact", { root });
 });
-ipcMain.handle("curator:resolveDates", async () => {
+ipcMain.handle("curator:resolveDates", async (_event, root: string) => {
   await ensureBackendReady();
-  return sidecar!.call<{ resolved: number }>("resolveDates", {});
+  return sidecar!.call<{ resolved: number }>("resolveDates", { root });
 });
-ipcMain.handle("curator:listMisplaced", async (): Promise<MisplacedFile[]> => {
+ipcMain.handle("curator:listMisplaced", async (_event, archiveRoot: string): Promise<MisplacedFile[]> => {
   await ensureBackendReady();
-  return listMisplacedByDate(db!);
+  return listMisplacedByDate(db!, archiveRoot);
 });
-ipcMain.handle("curator:listZeroByte", async (): Promise<ZeroByteFile[]> => {
+ipcMain.handle("curator:listZeroByte", async (_event, archiveRoot: string): Promise<ZeroByteFile[]> => {
   await ensureBackendReady();
-  return listZeroByte(db!);
+  return listZeroByte(db!, archiveRoot);
 });
 ipcMain.handle("curator:buildProposals", async (_event, archiveRoot: string): Promise<Proposal[]> => {
   await ensureBackendReady();

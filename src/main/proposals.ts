@@ -2,23 +2,32 @@
 import { basename, join } from "node:path";
 import type { Proposal } from "@shared/types";
 
+function scopeClause(archiveRoot: string): { sql: string; params: [string, string, string] } {
+  const normalized = archiveRoot.replace(/[\\/]+$/, "");
+  return {
+    sql: " AND (path = ? OR path LIKE ? OR path LIKE ?)",
+    params: [normalized, `${normalized}/%`, `${normalized}\\%`],
+  };
+}
+
 export type Action = Proposal["action"];
 export type { Proposal } from "@shared/types";
 
 export function buildProposals(db: Database.Database, archiveRoot: string): Proposal[] {
   const out: Proposal[] = [];
+  const scope = scopeClause(archiveRoot);
 
   const dupRows = db.prepare(`
     SELECT id, path, xxhash, mtime_ns
       FROM files
-     WHERE xxhash IS NOT NULL
+     WHERE xxhash IS NOT NULL${scope.sql}
        AND xxhash IN (
          SELECT xxhash FROM files
-          WHERE xxhash IS NOT NULL
+          WHERE xxhash IS NOT NULL${scope.sql}
           GROUP BY xxhash HAVING COUNT(*) >= 2
        )
   ORDER BY xxhash, mtime_ns
-  `).all() as Array<{ id: number; path: string; xxhash: string; mtime_ns: number }>;
+  `).all(...scope.params, ...scope.params) as Array<{ id: number; path: string; xxhash: string; mtime_ns: number }>;
 
   const perHash = new Map<string, typeof dupRows>();
   for (const row of dupRows) {
@@ -40,8 +49,8 @@ export function buildProposals(db: Database.Database, archiveRoot: string): Prop
   const mpRows = db.prepare(`
     SELECT id, path, canonical_date
       FROM files
-     WHERE canonical_date IS NOT NULL
-  `).all() as Array<{ id: number; path: string; canonical_date: string }>;
+     WHERE canonical_date IS NOT NULL${scope.sql}
+  `).all(...scope.params) as Array<{ id: number; path: string; canonical_date: string }>;
 
   for (const row of mpRows) {
     const match = row.path.match(/[\\/](\d{4})[\\/]/);

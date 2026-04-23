@@ -52,7 +52,7 @@ test("scan to apply to undo restores file state", async () => {
 
     await win.evaluate(async (root) => {
       await window.curator.scan(root);
-      await window.curator.hashAll();
+      await window.curator.hashAll(root);
     }, archiveRoot);
 
     const proposals = await win.evaluate(async (root) => {

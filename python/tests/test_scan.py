@@ -113,3 +113,27 @@ def test_scan_emits_progress_events_per_batch(db: Path, tmp_path: Path, monkeypa
 
     scanned_values = [payload["scanned"] for _, payload in captured]
     assert scanned_values == sorted(scanned_values)
+
+
+def test_scan_replaces_existing_rows_for_same_root(db: Path, tmp_path: Path):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    keep = archive / "keep.jpg"
+    remove = archive / "remove.jpg"
+    keep.write_bytes(b"keep")
+    remove.write_bytes(b"remove")
+
+    first = scan.scan(str(archive))
+    assert first["scanned"] == 2
+
+    remove.unlink()
+
+    second = scan.scan(str(archive))
+    assert second["scanned"] == 1
+
+    con = sqlite3.connect(str(db))
+    try:
+        rows = con.execute("SELECT path FROM files ORDER BY path").fetchall()
+        assert rows == [(str(keep),)]
+    finally:
+        con.close()

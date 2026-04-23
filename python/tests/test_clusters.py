@@ -72,3 +72,16 @@ def test_cluster_files_sorted_by_path(db):
     assert len(result) == 1
     paths = [f["path"] for f in result[0]["files"]]
     assert paths == ["a.jpg", "m.jpg", "z.jpg"]
+
+
+def test_duplicates_exact_can_scope_to_root(db):
+    _insert(db, [
+        ("/archive-a/1.jpg", 100, 1, "same"),
+        ("/archive-a/2.jpg", 100, 2, "same"),
+        ("/archive-b/1.jpg", 100, 3, "same"),
+        ("/archive-b/2.jpg", 100, 4, "same"),
+    ])
+
+    result = clusters.duplicates_exact("/archive-a")
+    assert len(result) == 1
+    assert [row["path"] for row in result[0]["files"]] == ["/archive-a/1.jpg", "/archive-a/2.jpg"]

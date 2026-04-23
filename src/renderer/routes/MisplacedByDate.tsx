@@ -35,7 +35,8 @@ export function MisplacedByDate(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      setRows(await window.curator.listMisplaced());
+      if (!archiveRoot) return;
+      setRows(await window.curator.listMisplaced(archiveRoot));
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
       setError(message);
@@ -54,7 +55,8 @@ export function MisplacedByDate(): JSX.Element {
     setResolving(true);
     setError(null);
     try {
-      await window.curator.resolveDates();
+      if (!archiveRoot) return;
+      await window.curator.resolveDates(archiveRoot);
       await load();
       push({ kind: "success", title: "Dates resolved" });
     } catch (err) {

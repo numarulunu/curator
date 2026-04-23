@@ -25,16 +25,16 @@ describe("buildProposals", () => {
     const ins = db.prepare(
       "INSERT INTO files (path, size, mtime_ns, xxhash, scanned_at) VALUES (?, ?, ?, ?, datetime('now'))",
     );
-    ins.run("/a/newer.jpg", 100, 200, "hhhhhhhhhhhhhhhh");
-    ins.run("/a/older.jpg", 100, 100, "hhhhhhhhhhhhhhhh");
+    ins.run("/archive/newer.jpg", 100, 200, "hhhhhhhhhhhhhhhh");
+    ins.run("/archive/older.jpg", 100, 100, "hhhhhhhhhhhhhhhh");
 
     const proposals: Proposal[] = buildProposals(db, "/archive");
     const quarantines = proposals.filter((p) => p.action === "quarantine");
 
     expect(quarantines).toHaveLength(1);
-    expect(quarantines[0].src_path).toBe("/a/newer.jpg");
+    expect(quarantines[0].src_path).toBe("/archive/newer.jpg");
     expect(quarantines[0].dst_path).toBeNull();
-    expect(quarantines[0].reason).toContain("/a/older.jpg");
+    expect(quarantines[0].reason).toContain("/archive/older.jpg");
   });
 
   it("proposes move for files in wrong year folder", () => {
@@ -55,9 +55,9 @@ describe("buildProposals", () => {
     const ins = db.prepare(
       "INSERT INTO files (path, size, mtime_ns, xxhash, scanned_at) VALUES (?, ?, ?, ?, datetime('now'))",
     );
-    ins.run("/a/mid.jpg", 100, 200, "aaaaaaaaaaaaaaaa");
-    ins.run("/a/oldest.jpg", 100, 100, "aaaaaaaaaaaaaaaa");
-    ins.run("/a/newest.jpg", 100, 300, "aaaaaaaaaaaaaaaa");
+    ins.run("/archive/mid.jpg", 100, 200, "aaaaaaaaaaaaaaaa");
+    ins.run("/archive/oldest.jpg", 100, 100, "aaaaaaaaaaaaaaaa");
+    ins.run("/archive/newest.jpg", 100, 300, "aaaaaaaaaaaaaaaa");
 
     const proposals = buildProposals(db, "/archive");
     const quarantines = proposals
@@ -65,8 +65,8 @@ describe("buildProposals", () => {
       .map((p) => p.src_path)
       .sort();
 
-    expect(quarantines).toEqual(["/a/mid.jpg", "/a/newest.jpg"]);
-    expect(proposals.every((p) => p.reason.includes("/a/oldest.jpg") || p.action !== "quarantine")).toBe(true);
+    expect(quarantines).toEqual(["/archive/mid.jpg", "/archive/newest.jpg"]);
+    expect(proposals.every((p) => p.reason.includes("/archive/oldest.jpg") || p.action !== "quarantine")).toBe(true);
   });
 
   it("ignores singletons and files already in the correct year folder", () => {
@@ -79,4 +79,19 @@ describe("buildProposals", () => {
     const proposals = buildProposals(db, "/archive");
     expect(proposals).toHaveLength(0);
   });
+
+  it("ignores duplicate rows outside the selected archive", () => {
+    const ins = db.prepare(
+      "INSERT INTO files (path, size, mtime_ns, xxhash, scanned_at) VALUES (?, ?, ?, ?, datetime('now'))",
+    );
+    ins.run("/archive/a.jpg", 100, 100, "hhhhhhhhhhhhhhhh");
+    ins.run("/archive/b.jpg", 100, 200, "hhhhhhhhhhhhhhhh");
+    ins.run("/other/c.jpg", 100, 300, "hhhhhhhhhhhhhhhh");
+    ins.run("/other/d.jpg", 100, 400, "hhhhhhhhhhhhhhhh");
+
+    const proposals = buildProposals(db, "/archive");
+    expect(proposals.filter((p) => p.action === "quarantine")).toHaveLength(1);
+    expect(proposals[0].src_path).toBe("/archive/b.jpg");
+  });
+
 });

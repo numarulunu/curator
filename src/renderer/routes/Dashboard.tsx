@@ -81,9 +81,9 @@ export function Dashboard(): JSX.Element {
     setRefreshing(true);
     try {
       const [nextDuplicates, nextMisplaced, nextZeroByte] = await Promise.all([
-        window.curator.duplicatesExact(),
-        window.curator.listMisplaced(),
-        window.curator.listZeroByte(),
+        window.curator.duplicatesExact(archiveRoot),
+        window.curator.listMisplaced(archiveRoot),
+        window.curator.listZeroByte(archiveRoot),
       ]);
       setDuplicates(nextDuplicates);
       setMisplaced(nextMisplaced);
@@ -110,8 +110,8 @@ export function Dashboard(): JSX.Element {
     try {
       const scan = await window.curator.scan(archiveRoot);
       setResult(scan);
-      await window.curator.hashAll();
-      await window.curator.resolveDates();
+      await window.curator.hashAll(archiveRoot);
+      await window.curator.resolveDates(archiveRoot);
       await loadFindings();
       setIsAnalyzed(true);
       push({ kind: "success", title: "Analysis complete", message: `${scan.scanned} files indexed.` });

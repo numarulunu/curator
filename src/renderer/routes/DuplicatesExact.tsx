@@ -36,7 +36,8 @@ export function DuplicatesExact(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      setClusters(await window.curator.duplicatesExact());
+      if (!archiveRoot) return;
+      setClusters(await window.curator.duplicatesExact(archiveRoot));
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
       setError(message);
@@ -55,7 +56,8 @@ export function DuplicatesExact(): JSX.Element {
     setHashing(true);
     setError(null);
     try {
-      await window.curator.hashAll();
+      if (!archiveRoot) return;
+      await window.curator.hashAll(archiveRoot);
       await load();
       push({ kind: "success", title: "Hashes complete" });
     } catch (err) {
