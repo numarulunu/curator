@@ -13,6 +13,7 @@ import type {
   SidecarVersion,
 } from "@shared/types";
 import { applyProposals } from "./apply";
+import { undoSession } from "./undo";
 import { openDb, runMigrations } from "./db";
 import { resolveCuratorStateDir } from "./paths";
 import { buildProposals } from "./proposals";
@@ -182,12 +183,7 @@ ipcMain.handle("curator:listSessions", async (): Promise<SessionRow[]> => {
 });
 ipcMain.handle("curator:undoSession", async (_event, id: string) => {
   await ensureBackendReady();
-  const result = await sidecar!.call<{ restored: number; failed: number; errors?: Array<{ src: string; error: string }>; session_id: string }>(
-    "undoSession",
-    { session_id: id },
-  );
-  db!.prepare("UPDATE actions SET status = 'reversed' WHERE session_id = ?").run(id);
-  return result;
+  return undoSession(db!, sidecar!, id);
 });
 
 app.whenReady().then(async () => {
