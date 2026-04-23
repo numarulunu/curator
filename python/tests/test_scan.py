@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import sqlite3
 import time
+
+import pytest
 from pathlib import Path
 
 from curator import scan
+from curator.walker import ScanRootError
 
 
 def test_scan_inserts_rows_into_files_table(db: Path, tmp_path: Path):
@@ -137,3 +140,11 @@ def test_scan_replaces_existing_rows_for_same_root(db: Path, tmp_path: Path):
         assert rows == [(str(keep),)]
     finally:
         con.close()
+def test_scan_raises_when_root_cannot_be_opened(db: Path, monkeypatch):
+    def fake_walk(_root):
+        raise ScanRootError("Could not open scan root '/blocked': denied")
+
+    monkeypatch.setattr(scan, "walk", fake_walk)
+
+    with pytest.raises(ScanRootError, match="Could not open scan root"):
+        scan.scan("/blocked")

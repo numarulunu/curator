@@ -19,12 +19,16 @@ class WalkedFile:
     mtime_ns: int
 
 
+class ScanRootError(RuntimeError):
+    pass
+
+
 def walk(root: str) -> Iterator[WalkedFile]:
     """Recursively yield WalkedFile entries for indexable media under root."""
     try:
         it = os.scandir(root)
-    except (PermissionError, FileNotFoundError, OSError):
-        return
+    except (PermissionError, FileNotFoundError, OSError) as exc:
+        raise ScanRootError(f"Could not open scan root '{root}': {exc}") from exc
     with it:
         for entry in it:
             try:

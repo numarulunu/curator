@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from curator.walker import INDEX_EXTS, WalkedFile, walk
 
 
@@ -26,11 +28,23 @@ def test_walks_nested_dirs_and_filters_by_extension(tmp_path):
 
 
 def test_handles_non_ascii_paths(tmp_path):
-    non_ascii_dir = tmp_path / "„OVIDIUS"
+    non_ascii_dir = tmp_path / "\u201eOVIDIUS"
     non_ascii_dir.mkdir()
     (non_ascii_dir / "photo.jpg").write_bytes(b"jpeg-bytes")
 
     results = list(walk(str(tmp_path)))
 
     assert len(results) == 1
-    assert "„OVIDIUS" in results[0].path
+    assert "\u201eOVIDIUS" in results[0].path
+
+
+def test_walk_raises_scan_root_error_when_root_cannot_be_opened(monkeypatch):
+    from curator.walker import ScanRootError
+
+    def fake_scandir(_root):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr("curator.walker.os.scandir", fake_scandir)
+
+    with pytest.raises(ScanRootError, match="denied"):
+        list(walk("/blocked"))
