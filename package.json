@@ -1,7 +1,7 @@
 {
   "name": "curator",
-  "version": "0.1.12",
-  "description": "Archive Curator â€” dedup + reorg tool",
+  "version": "0.1.13",
+  "description": "Archive Curator \u2014 dedup + reorg tool",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

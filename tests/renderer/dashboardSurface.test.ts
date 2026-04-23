@@ -8,7 +8,7 @@ describe("DashboardSurface", () => {
   test("shows the current app version in the top title bar", () => {
     const markup = renderToStaticMarkup(
       React.createElement(DashboardSurface, {
-        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.12" } as never,
+        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.13" } as never,
         archiveRoot: null,
         outputRoot: null,
         clearArchive: () => {},
@@ -45,13 +45,13 @@ describe("DashboardSurface", () => {
     );
 
     expect(markup).toContain("Curator");
-    expect(markup).toContain("v0.1.12");
+    expect(markup).toContain("v0.1.13");
   });
 
   test("spells out exact-duplicate limits when analysis finds nothing", () => {
     const markup = renderToStaticMarkup(
       React.createElement(DashboardSurface, {
-        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.12" } as never,
+        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.13" } as never,
         archiveRoot: "D:/archive",
         outputRoot: "D:/output",
         clearArchive: () => {},
@@ -94,7 +94,7 @@ describe("DashboardSurface", () => {
   test("shows a supported-files warning when analysis indexed zero files", () => {
     const markup = renderToStaticMarkup(
       React.createElement(DashboardSurface, {
-        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.12" } as never,
+        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.13" } as never,
         archiveRoot: "D:/archive",
         outputRoot: null,
         clearArchive: () => {},
@@ -157,7 +157,7 @@ describe("DashboardSurface", () => {
 
     const markup = renderToStaticMarkup(
       React.createElement(DashboardSurface, {
-        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.12" } as never,
+        app: { node: "22.0.0", electron: "32.0.1", version: "0.1.13" } as never,
         archiveRoot: "D:/archive",
         outputRoot: "D:/output",
         clearArchive: () => {},
