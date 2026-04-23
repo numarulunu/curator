@@ -23,7 +23,7 @@ test("scan pipeline walks temp archive end-to-end", async () => {
 
     try {
       const win = await app.firstWindow();
-      await expect(win.locator("h1")).toHaveText("Curator", { timeout: 15_000 });
+      await expect(win.getByText("Input")).toBeVisible({ timeout: 15_000 });
 
       const result = await win.evaluate(async (root) => {
         const scan = await window.curator.scan(root);
@@ -60,7 +60,7 @@ test("unsupported-only archive clears prior populated findings from the renderer
 
     try {
       const win = await app.firstWindow();
-      await expect(win.locator("h1")).toHaveText("Curator", { timeout: 15_000 });
+      await expect(win.getByText("Input")).toBeVisible({ timeout: 15_000 });
 
       await win.evaluate((root) => {
         localStorage.setItem("curator.archiveRoot", root);

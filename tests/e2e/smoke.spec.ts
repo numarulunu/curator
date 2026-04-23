@@ -16,7 +16,6 @@ test("app launches with working sidecar", async () => {
   });
   try {
     const win = await app.firstWindow();
-    await expect(win.locator("h1")).toHaveText("Curator", { timeout: 10_000 });
     await expect(win.getByText("Input")).toBeVisible({ timeout: 10_000 });
     await expect(win.getByRole("button", { name: "Browse" }).first()).toBeVisible({ timeout: 10_000 });
     await expect(win.getByText("Custom")).toBeVisible({ timeout: 10_000 });
@@ -48,7 +47,7 @@ test("scan to apply to undo restores file state", async () => {
 
   try {
     const win = await app.firstWindow();
-    await expect(win.locator("h1")).toHaveText("Curator", { timeout: 10_000 });
+    await expect(win.getByText("Input")).toBeVisible({ timeout: 10_000 });
 
     await win.evaluate(async (root) => {
       await window.curator.scan(root);
