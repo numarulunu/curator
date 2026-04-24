@@ -42,6 +42,11 @@ def test_unknown_preset_raises():
         settings.resolve_preset("crispy")
 
 
+def test_unknown_profile_raises():
+    with pytest.raises(ValueError):
+        settings.resolve_profile("crispy", cpu_count=4)
+
+
 def test_profile_eco_cpu_only():
     p = settings.resolve_profile("eco", cpu_count=8)
     assert p["workers"] == 2
