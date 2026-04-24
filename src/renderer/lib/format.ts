@@ -3,16 +3,6 @@ export function formatNumber(n: number | null | undefined): string {
   return n.toLocaleString("en-US");
 }
 
-export function formatBytes(bytes: number | null | undefined): string {
-  if (bytes === null || bytes === undefined || Number.isNaN(bytes)) return "?";
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-  const i = Math.min(units.length - 1, Math.floor(Math.log(Math.abs(bytes)) / Math.log(1024)));
-  const value = bytes / Math.pow(1024, i);
-  const digits = value >= 100 || i === 0 ? 0 : value >= 10 ? 1 : 2;
-  return `${value.toFixed(digits)} ${units[i]}`;
-}
-
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "?";
   const d = new Date(iso);

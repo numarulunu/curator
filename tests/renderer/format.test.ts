@@ -1,15 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { formatBytes, formatDuration, formatNumber, shortHash } from "../../src/renderer/lib/format";
+import { formatDuration, formatNumber, shortHash } from "../../src/renderer/lib/format";
 
 describe("formatNumber", () => {
   test("formats integers with separators", () => {
     expect(formatNumber(12345)).toBe("12,345");
-  });
-});
-
-describe("formatBytes", () => {
-  test("formats byte counts into human-readable units", () => {
-    expect(formatBytes(1536)).toBe("1.50 KB");
   });
 });
 
