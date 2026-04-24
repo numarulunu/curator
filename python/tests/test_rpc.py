@@ -1,6 +1,15 @@
 import json
 import io
+import pytest
 from curator.rpc import dispatch, register, REGISTRY
+
+
+@pytest.fixture(autouse=True)
+def _restore_registry():
+    original = dict(REGISTRY)
+    yield
+    REGISTRY.clear()
+    REGISTRY.update(original)
 
 
 def test_dispatch_registered_method():
