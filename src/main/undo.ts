@@ -20,6 +20,7 @@ export async function undoSession(
   const listActions = db.prepare("SELECT src_path FROM actions WHERE session_id = ?");
   const markReversed = db.prepare("UPDATE actions SET status = 'reversed', error = NULL WHERE session_id = ? AND src_path = ?");
   const markUndoFailed = db.prepare("UPDATE actions SET error = ? WHERE session_id = ? AND src_path = ?");
+  const clearAppliedClusters = db.prepare("UPDATE clusters SET applied_session_id = NULL WHERE applied_session_id = ?");
 
   const recordUndo = db.transaction(() => {
     const rows = listActions.all(sessionId) as Array<{ src_path: string }>;
@@ -30,6 +31,9 @@ export async function undoSession(
       } else {
         markReversed.run(sessionId, src_path);
       }
+    }
+    if (result.failed === 0) {
+      clearAppliedClusters.run(sessionId);
     }
   });
   recordUndo();

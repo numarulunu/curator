@@ -44,6 +44,15 @@ describe("undoSession", () => {
     ]);
   });
 
+  it("clears applied cluster markers when sidecar restores all", async () => {
+    db.prepare("INSERT INTO clusters (id, method, confidence, created_at, applied_session_id) VALUES (42, 'phash', 1.0, datetime('now'), 's1')").run();
+    const sidecar = makeSidecar({ restored: 2, failed: 0, errors: [], session_id: "s1" });
+
+    await undoSession(db, sidecar, "s1");
+
+    const row = db.prepare("SELECT applied_session_id FROM clusters WHERE id = 42").get() as { applied_session_id: string | null };
+    expect(row.applied_session_id).toBeNull();
+  });
   it("marks only restored actions reversed and records errors on failed ones", async () => {
     const sidecar = makeSidecar({
       restored: 1,
