@@ -132,7 +132,7 @@ export interface HardwareProfile {
 }
 
 export type AnalysisPhase =
-  | "scan" | "hash" | "dates" | "proposals"
+  | "scan" | "hash" | "dates"
   | "features" | "cluster" | "grade" | "done";
 
 export interface AnalysisProgress {
@@ -145,7 +145,6 @@ export interface AnalysisProgress {
 export interface AnalysisResult {
   scanned: number;
   hashed: number;
-  proposals: number;
   clusters_created: number;
   features_processed: number;
   cancelled: boolean;

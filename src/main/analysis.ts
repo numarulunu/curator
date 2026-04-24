@@ -3,6 +3,7 @@ import type {
   AnalysisPhase, AnalysisProgress, AnalysisResult, AnalysisSettings, PresetName,
 } from "@shared/types";
 
+// Mirrors python/curator/settings.py _PRESETS — keep in sync.
 const PRESETS: Record<Exclude<PresetName, "custom">, Record<string, number>> = {
   safe:       { phash_hamming:  5, clip_cosine: 0.93, exif_time_s:  900, gps_m:  80, min_confidence: 0.92 },
   balanced:   { phash_hamming:  8, clip_cosine: 0.90, exif_time_s: 1800, gps_m: 150, min_confidence: 0.88 },
@@ -41,8 +42,10 @@ export async function runAnalysis(
     emit({ phase: "features" as AnalysisPhase, note: "downloading models" });
     await sidecar.call("downloadModels", {});
 
+    const MAX_FEATURE_BATCHES = 10_000;
     emit({ phase: "features" as AnalysisPhase, processed: 0 });
-    for (let guard = 0; guard < 10_000; guard++) {
+    let drained = false;
+    for (let guard = 0; guard < MAX_FEATURE_BATCHES; guard++) {
       const r = await sidecar.call<{ processed: number; cancelled?: boolean }>(
         "extractFeatures",
         { root: archiveRoot, batch_size: batchSize, ai_mode: settings.ai_mode },
@@ -50,16 +53,19 @@ export async function runAnalysis(
       featuresProcessed += r.processed;
       emit({ phase: "features" as AnalysisPhase, processed: featuresProcessed });
       if (r.cancelled) {
+        drained = true;
         return {
           scanned: scan.scanned,
           hashed: hash.hashed,
-          proposals: 0,
           clusters_created: 0,
           features_processed: featuresProcessed,
           cancelled: true,
         };
       }
-      if (r.processed === 0) break;
+      if (r.processed === 0) { drained = true; break; }
+    }
+    if (!drained) {
+      console.warn(`Feature extraction hit MAX_FEATURE_BATCHES=${MAX_FEATURE_BATCHES} without draining; archive may exceed supported size.`);
     }
 
     const thresholds = resolveThresholds(settings);
@@ -78,7 +84,6 @@ export async function runAnalysis(
   return {
     scanned: scan.scanned,
     hashed: hash.hashed,
-    proposals: 0,
     clusters_created: clustersCreated,
     features_processed: featuresProcessed,
     cancelled: false,
