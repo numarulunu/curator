@@ -74,6 +74,14 @@ def _extract_features_handler(params: dict) -> dict:
     )
 
 
+from curator import cluster_smart as _cluster_smart
+
+
+@register("clusterSmart")
+def _cluster_smart_handler(params: dict) -> dict:
+    return _cluster_smart.run(root=params.get("root"))
+
+
 @register("resolveDates")
 def _resolve_dates_handler(_params: dict) -> dict:
     con = connect()
