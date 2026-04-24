@@ -305,3 +305,48 @@ def _apply_cluster_handler(params: dict) -> dict:
 @register("undoSession")
 def _undo_session_handler(params: dict) -> dict:
     return undo_session(params["session_id"])
+
+
+import json as _jsonmod
+from curator import settings as _settings
+from curator import hardware as _hardware
+from curator import pipeline as _pl
+
+
+@register("getAnalysisSettings")
+def _get_settings_handler(_params: dict) -> dict:
+    con = connect()
+    try:
+        row = con.execute("SELECT settings_json FROM analysis_settings WHERE id = 1").fetchone()
+    finally:
+        con.close()
+    if row is None:
+        return _settings.defaults()
+    return _jsonmod.loads(row[0])
+
+
+@register("saveAnalysisSettings")
+def _save_settings_handler(params: dict) -> dict:
+    s = params["settings"]
+    blob = _jsonmod.dumps(s, sort_keys=True)
+    con = connect()
+    try:
+        con.execute(
+            "INSERT INTO analysis_settings (id, settings_json, updated_at) VALUES (1, ?, datetime('now'))"
+            " ON CONFLICT(id) DO UPDATE SET settings_json = excluded.settings_json, updated_at = excluded.updated_at",
+            (blob,),
+        )
+    finally:
+        con.close()
+    return {"ok": True}
+
+
+@register("detectHardware")
+def _detect_hardware_handler(_params: dict) -> dict:
+    return _hardware.detect_as_dict()
+
+
+@register("cancelAnalysis")
+def _cancel_analysis_handler(_params: dict) -> dict:
+    _pl.request_cancel()
+    return {"ok": True}
