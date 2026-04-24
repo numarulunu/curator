@@ -73,13 +73,6 @@ export interface ClusterListing {
   clusters: Cluster[];
 }
 
-export interface SmartDistillResult {
-  clusters_created: number;
-  files_clustered: number;
-  clusters_graded: number;
-  features_processed: number;
-}
-
 export interface CuratorApi {
   getVersion: () => Promise<AppVersion>;
   getSidecarVersion: () => Promise<SidecarVersion>;
