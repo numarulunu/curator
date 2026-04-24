@@ -1,7 +1,7 @@
 ﻿export type AppVersion = { version: string; node: string; electron: string };
 export type SidecarVersion = { sidecar: string; python: string };
 export type ScanResult = { scanned: number; root: string };
-export type DuplicateFile = { id: number; path: string; size: number; mtime_ns: number };
+type DuplicateFile = { id: number; path: string; size: number; mtime_ns: number };
 export type DuplicateCluster = { xxhash: string; size: number; count: number; files: DuplicateFile[] };
 export type HashAllResult = { hashed: number; skipped: number };
 export type ResolveDatesResult = { resolved: number };

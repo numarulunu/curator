@@ -45,8 +45,6 @@ export interface DashboardSurfaceProps {
   app: AppVersion | null;
   archiveRoot: string | null;
   outputRoot: string | null;
-  clearArchive: () => void;
-  clearOutput: () => void;
   counts: { duplicate: number; misplaced: number; "zero-byte": number; total: number };
   duplicateWaste: number;
   error: string | null;
@@ -71,7 +69,6 @@ export interface DashboardSurfaceProps {
   result: ScanResult | null;
   reviewRowCount: number;
   sessionsLoading: boolean;
-  sessionsTotal: number;
   setFilter: (value: DashboardSurfaceFilter) => void;
   setQuery: (value: string) => void;
   sidecar: SidecarVersion | null;

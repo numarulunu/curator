@@ -19,7 +19,7 @@ import { useToast } from "../state/ToastContext";
 import { DashboardSurface, type DashboardSurfaceFilter } from "../components/dashboard/DashboardSurface";
 
 export function Dashboard(): JSX.Element {
-  const { archiveRoot, outputRoot, pickArchive, pickOutput, setArchiveRoot, setOutputRoot } = useArchive();
+  const { archiveRoot, outputRoot, pickArchive, pickOutput } = useArchive();
   const { push } = useToast();
   const event = useCuratorEvents();
 
@@ -284,8 +284,6 @@ export function Dashboard(): JSX.Element {
         app={app}
         archiveRoot={archiveRoot}
         outputRoot={outputRoot}
-        clearArchive={() => setArchiveRoot(null)}
-        clearOutput={() => setOutputRoot(null)}
         counts={counts}
         duplicateWaste={duplicateWaste}
         error={error}
@@ -310,7 +308,6 @@ export function Dashboard(): JSX.Element {
         result={result}
         reviewRowCount={reviewRows.length}
         sessionsLoading={sessionsLoading}
-        sessionsTotal={sessions.length}
         setFilter={setFilter}
         setQuery={setQuery}
         sidecar={sidecar}

@@ -7,7 +7,3 @@ export function resolveCuratorStateDir(base?: string): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
-
-export function resolveBinaryPath(resourcesRoot: string, binName: string): string {
-  return join(resourcesRoot, "bin", binName);
-}
