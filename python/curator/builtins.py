@@ -290,7 +290,8 @@ def _apply_cluster_handler(params: dict) -> dict:
                     ("failed" if err else "applied", err, session_id, action["src_path"]),
                 )
             con.execute("UPDATE sessions SET completed_at = datetime('now') WHERE id = ?", (session_id,))
-            con.execute("UPDATE clusters SET applied_session_id = ? WHERE id = ?", (session_id, cid))
+            if int(result.get("failed", 0)) == 0:
+                con.execute("UPDATE clusters SET applied_session_id = ? WHERE id = ?", (session_id, cid))
             con.execute("COMMIT")
         except Exception:
             con.execute("ROLLBACK")

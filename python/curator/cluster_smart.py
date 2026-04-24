@@ -50,8 +50,11 @@ def _load_items(con, root: Optional[str]) -> List[Dict[str, Any]]:
                 gps = None
         clip = None
         if emb is not None:
-            clip = np.frombuffer(emb, dtype=np.float32)
-            if clip.shape[0] != 512:
+            try:
+                clip = np.frombuffer(emb, dtype=np.float32)
+            except ValueError:
+                clip = None
+            if clip is not None and clip.size == 0:
                 clip = None
         items.append({"file_id": fid, "phash": ph, "clip": clip, "ts": ts, "gps": gps})
     return items
@@ -127,7 +130,11 @@ def stage_clip(
 
     for i in range(n):
         for j in range(i + 1, n):
-            cos = float(np.dot(vecs[i]["clip"], vecs[j]["clip"]))
+            left = vecs[i]["clip"]
+            right = vecs[j]["clip"]
+            if left.shape != right.shape:
+                continue
+            cos = float(np.dot(left, right))
             threshold = cosine_threshold
             if vecs[i]["ts"] is not None and vecs[j]["ts"] is not None:
                 if abs(vecs[i]["ts"] - vecs[j]["ts"]) <= time_window_s:

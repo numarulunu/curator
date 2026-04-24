@@ -41,6 +41,44 @@ def test_clip_stage_groups_by_cosine_with_time_prior():
     assert all(12 not in g for g in grouped)
 
 
+def test_run_clusters_pooled_clip_embeddings(tmp_path, monkeypatch):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "c.db"))
+    con = _db.connect()
+    _db.ensure_schema(con)
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS image_features (file_id INTEGER PRIMARY KEY, phash BLOB, clip_embedding BLOB, width INTEGER, height INTEGER, computed_at TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS cluster_members (cluster_id INTEGER NOT NULL, file_id INTEGER NOT NULL, rank INTEGER NOT NULL, score REAL NOT NULL, score_breakdown TEXT NOT NULL, is_winner INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (cluster_id, file_id))"
+    )
+    rng = np.random.default_rng(11)
+    base = rng.normal(size=768).astype(np.float32)
+    base /= np.linalg.norm(base)
+    near = base + rng.normal(scale=0.01, size=768).astype(np.float32)
+    near /= np.linalg.norm(near)
+    con.execute("INSERT INTO files (id, path, size, mtime_ns, scanned_at) VALUES (1, 'a.jpg', 1, 0, datetime('now'))")
+    con.execute("INSERT INTO files (id, path, size, mtime_ns, scanned_at) VALUES (2, 'b.jpg', 1, 0, datetime('now'))")
+    con.execute(
+        "INSERT INTO image_features (file_id, phash, clip_embedding, width, height, computed_at) VALUES (1, ?, ?, 1, 1, datetime('now'))",
+        ((0).to_bytes(8, "big"), base.tobytes()),
+    )
+    con.execute(
+        "INSERT INTO image_features (file_id, phash, clip_embedding, width, height, computed_at) VALUES (2, ?, ?, 1, 1, datetime('now'))",
+        ((0xFFFF_FFFF_FFFF_FFFF).to_bytes(8, "big"), near.tobytes()),
+    )
+    con.close()
+
+    res = cluster_smart.run(root=None)
+
+    assert res == {"clusters_created": 1, "files_clustered": 2}
+    con = _db.connect()
+    row = con.execute("SELECT method FROM clusters").fetchone()
+    con.close()
+    assert row == ("clip",)
+
 def test_run_end_to_end_returns_empty_summary(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "c.db"))
     con = _db.connect()

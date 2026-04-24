@@ -81,12 +81,39 @@ def test_extract_batch_records_decode_errors(tmp_path, db_path):
         "INSERT INTO files (path, size, mtime_ns, scanned_at) VALUES (?, ?, ?, datetime('now'))",
         (str(bad), bad.stat().st_size, bad.stat().st_mtime_ns),
     )
+    fid = con.execute("SELECT id FROM files WHERE path = ?", (str(bad),)).fetchone()[0]
     con.close()
 
     result = extract_batch(root=str(tmp_path), batch_size=10, skip_ai=True)
 
     assert result["processed"] == 0
     assert len(result["errors"]) == 1
+    con = _db.connect()
+    row = con.execute("SELECT phash, width, height FROM image_features WHERE file_id = ?", (fid,)).fetchone()
+    con.close()
+    assert row == (None, None, None)
+
+
+def test_extract_batch_decode_error_does_not_block_next_file(tmp_path, db_path):
+    bad = tmp_path / "bad.jpg"
+    bad.write_bytes(b"not-an-image")
+    good = tmp_path / "good.jpg"
+    scene(good)
+    con = _db.connect()
+    for path in (bad, good):
+        con.execute(
+            "INSERT INTO files (path, size, mtime_ns, scanned_at) VALUES (?, ?, ?, datetime('now'))",
+            (str(path), path.stat().st_size, path.stat().st_mtime_ns),
+        )
+    con.close()
+
+    first = extract_batch(root=str(tmp_path), batch_size=1, skip_ai=True)
+    second = extract_batch(root=str(tmp_path), batch_size=1, skip_ai=True)
+
+    assert first["processed"] == 0
+    assert len(first["errors"]) == 1
+    assert second["processed"] == 1
+    assert second["errors"] == []
 
 
 def test_feature_rpc_methods_are_registered():

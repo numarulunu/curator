@@ -36,7 +36,8 @@ export async function runSmartDistillation(
     });
     featuresProcessed += result.processed;
     emit({ phase: "features", processed: featuresProcessed });
-    if (result.processed === 0) break;
+    const errorCount = Array.isArray(result.errors) ? result.errors.length : 0;
+    if (result.processed === 0 && errorCount === 0) break;
   }
 
   emit({ phase: "cluster" });

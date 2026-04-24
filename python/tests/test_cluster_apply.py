@@ -79,6 +79,19 @@ def test_apply_cluster_moves_losers_to_undoable_quarantine(tmp_path, monkeypatch
     assert row[0] == result["session_id"]
 
 
+def test_apply_cluster_does_not_mark_applied_when_loser_move_fails(tmp_path, monkeypatch):
+    cid, _, lose = _seed(tmp_path, monkeypatch)
+    lose.unlink()
+
+    result = _apply_cluster_handler({"cluster_id": cid, "archive_root": str(tmp_path)})
+
+    assert result["ok"] == 0
+    assert result["failed"] == 1
+    con = _db.connect()
+    row = con.execute("SELECT applied_session_id FROM clusters WHERE id = ?", (cid,)).fetchone()
+    con.close()
+    assert row[0] is None
+
 def test_cluster_rpc_methods_are_registered():
     assert "listClusters" in REGISTRY
     assert "setClusterWinner" in REGISTRY

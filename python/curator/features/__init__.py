@@ -7,6 +7,23 @@ from curator.features import phash as _phash
 from curator.features import quality as _quality
 
 
+def _record_failed_feature(file_id: int) -> None:
+    con = _db.connect()
+    try:
+        con.execute(
+            """
+            INSERT OR REPLACE INTO image_features
+            (file_id, phash, clip_embedding, sharpness, brightness_mean,
+             highlight_clip, shadow_clip, face_count, face_quality, nima_score,
+             width, height, computed_at)
+            VALUES (?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, datetime('now'))
+            """,
+            (file_id,),
+        )
+    finally:
+        con.close()
+
+
 def extract_one(file_id: int, path: str, skip_ai: bool = False) -> None:
     ph = _phash.compute(path)
     q = _quality.compute(path)
@@ -77,6 +94,7 @@ def extract_batch(root: Optional[str], batch_size: int = 200, skip_ai: bool = Fa
                 LEFT JOIN image_features ift ON ift.file_id = f.id
                 WHERE ift.file_id IS NULL
                   AND (f.path = ? OR f.path LIKE ? OR f.path LIKE ?)
+                ORDER BY f.id
                 LIMIT ?
                 """,
                 (normalized, f"{normalized}/%", f"{normalized}\\%", batch_size),
@@ -86,7 +104,9 @@ def extract_batch(root: Optional[str], batch_size: int = 200, skip_ai: bool = Fa
                 """
                 SELECT f.id, f.path FROM files f
                 LEFT JOIN image_features ift ON ift.file_id = f.id
-                WHERE ift.file_id IS NULL LIMIT ?
+                WHERE ift.file_id IS NULL
+                ORDER BY f.id
+                LIMIT ?
                 """,
                 (batch_size,),
             ).fetchall()
@@ -100,7 +120,12 @@ def extract_batch(root: Optional[str], batch_size: int = 200, skip_ai: bool = Fa
             extract_one(fid, path, skip_ai=skip_ai)
             processed += 1
         except Exception as exc:
-            errors.append({"file_id": fid, "error": str(exc)})
+            message = str(exc)
+            try:
+                _record_failed_feature(fid)
+            except Exception as mark_exc:
+                message = f"{message}; failed to record skip: {mark_exc}"
+            errors.append({"file_id": fid, "error": message})
 
     skipped_count = 0
     if not rows:

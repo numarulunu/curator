@@ -17,12 +17,30 @@ def test_preprocess_returns_nchw_float_tensor(tmp_path):
     assert x.dtype == np.float32
 
 
+def test_embedding_uses_pooled_model_output(tmp_path, monkeypatch):
+    p = tmp_path / "s.jpg"
+    scene(p)
+    pooled = np.arange(768, dtype=np.float32)[None, :] + 1.0
+
+    class FakeSession:
+        def run(self, _outputs, _inputs):
+            return [np.zeros((1, 50, 768), dtype=np.float32), pooled]
+
+    monkeypatch.setattr(clip, "_session", lambda: FakeSession())
+    monkeypatch.setattr(clip, "_INPUT_NAME", "pixel_values")
+
+    e = clip.embed(p)
+    expected = pooled[0] / np.linalg.norm(pooled[0])
+    assert e.shape == (768,)
+    assert np.allclose(e, expected)
+
 @pytest.mark.skipif(not MODELS_READY, reason="CLIP ONNX not downloaded")
-def test_embedding_shape_is_512(tmp_path):
+def test_embedding_is_normalized_vector(tmp_path):
     p = tmp_path / "s.jpg"
     scene(p)
     e = clip.embed(p)
-    assert e.shape == (512,)
+    assert e.ndim == 1
+    assert e.shape[0] >= 128
     assert e.dtype == np.float32
     assert abs(float(np.linalg.norm(e)) - 1.0) < 1e-3
 
