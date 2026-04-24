@@ -99,7 +99,6 @@ export interface CuratorApi {
   listSessions: () => Promise<Session[]>;
   undoSession: (id: string) => Promise<{ restored: number; failed: number; errors?: ApplyError[]; session_id: string }>;
   retrySession: (sessionId: string) => Promise<ApplyResult>;
-  smartDistill: (root: string) => Promise<SmartDistillResult>;
   listClusters: (root: string | null) => Promise<ClusterListing>;
   setClusterWinner: (clusterId: number, fileId: number) => Promise<void>;
   applyCluster: (clusterId: number, archiveRoot: string) => Promise<ApplyResult>;

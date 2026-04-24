@@ -225,8 +225,9 @@ export function Dashboard(): JSX.Element {
     setDistilling(true);
     setError(null);
     try {
-      const next = await window.curator.smartDistill(archiveRoot);
-      push({ kind: "success", title: "Smart distill complete", message: `${next.clusters_created} cluster${next.clusters_created === 1 ? "" : "s"} across ${next.files_clustered} photos.` });
+      // TODO(Task 12): replace with window.curator.runAnalysis
+      // const next = await window.curator.smartDistill(archiveRoot);
+      // push({ kind: "success", title: "Smart distill complete", message: `${next.clusters_created} cluster${next.clusters_created === 1 ? "" : "s"} across ${next.files_clustered} photos.` });
       navigate("/clusters");
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));

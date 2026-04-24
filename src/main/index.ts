@@ -15,9 +15,11 @@ import type {
   ZeroByteFile,
 } from "@shared/types";
 import { applyProposals, retrySession } from "./apply";
+import { runAnalysis } from "./analysis";
 import { applyCluster, listClusters, setClusterWinner } from "./clusters";
 import { undoSession } from "./undo";
 import { openDb, runMigrations } from "./db";
+import { detectHardware } from "./hardware";
 import { reconcileInterruptedSessions } from "./reconcile";
 import { resolveCuratorStateDir } from "./paths";
 import { buildProposals } from "./proposals";
@@ -27,8 +29,8 @@ import {
   listZeroByte,
   type SessionRow,
 } from "./queries";
+import { getAnalysisSettings, saveAnalysisSettings } from "./settings";
 import { Sidecar } from "./sidecar";
-import { runSmartDistillation } from "./smart";
 import { createUpdaterLogger, startAutoUpdater } from "./updater";
 
 let sidecar: Sidecar | null = null;
@@ -197,10 +199,26 @@ ipcMain.handle("curator:retrySession", async (_event, id: string) => {
   await ensureBackendReady();
   return retrySession(db!, sidecar!, id);
 });
-ipcMain.handle("curator:smartDistill", async (_event, root: string) => {
+ipcMain.handle("curator:getAnalysisSettings", async () => {
   await ensureBackendReady();
-  return runSmartDistillation(sidecar!, root, {
-    onProgress: (p) => mainWindow?.webContents.send("curator:event", { kind: "smart-progress", ...p }),
+  return getAnalysisSettings(sidecar!);
+});
+ipcMain.handle("curator:saveAnalysisSettings", async (_evt, settings) => {
+  await ensureBackendReady();
+  return saveAnalysisSettings(sidecar!, settings);
+});
+ipcMain.handle("curator:detectHardware", async () => {
+  await ensureBackendReady();
+  return detectHardware(sidecar!);
+});
+ipcMain.handle("curator:cancelAnalysis", async () => {
+  await ensureBackendReady();
+  await sidecar!.call("cancelAnalysis", {});
+});
+ipcMain.handle("curator:runAnalysis", async (_evt, archiveRoot: string) => {
+  await ensureBackendReady();
+  return runAnalysis(sidecar!, archiveRoot, {
+    onProgress: (p) => mainWindow?.webContents.send("curator:event", { kind: "analysis-progress", ...p }),
   });
 });
 ipcMain.handle("curator:listClusters", async (_event, root: string | null) => {
