@@ -10,3 +10,10 @@ def resolve_bin(name: str) -> str:
     if not p.is_file():
         raise FileNotFoundError(f"binary not found: {p}")
     return str(p)
+
+
+def resolve_models_dir() -> Path:
+    base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+    root = Path(base) / "Curator" / "models"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
