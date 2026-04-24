@@ -8,9 +8,47 @@ from curator.rpc import emit_event
 from curator.walker import WalkedFile, walk
 
 
-_INSERT_SQL = (
-    "INSERT OR REPLACE INTO files (path, size, mtime_ns, scanned_at) "
-    "SELECT path, size, mtime_ns, scanned_at FROM scan_stage"
+_INSERT_NEW_SQL = (
+    "INSERT INTO files (path, size, mtime_ns, scanned_at) "
+    "SELECT scan_stage.path, scan_stage.size, scan_stage.mtime_ns, scan_stage.scanned_at "
+    "FROM scan_stage "
+    "LEFT JOIN files ON files.path = scan_stage.path "
+    "WHERE files.path IS NULL"
+)
+_UPDATE_UNCHANGED_SQL = (
+    "UPDATE files "
+    "SET scanned_at = ("
+    "    SELECT scan_stage.scanned_at FROM scan_stage WHERE scan_stage.path = files.path"
+    ") "
+    "WHERE (path = ? OR path LIKE ? OR path LIKE ?) "
+    "AND EXISTS ("
+    "    SELECT 1 FROM scan_stage "
+    "    WHERE scan_stage.path = files.path "
+    "      AND scan_stage.size = files.size "
+    "      AND scan_stage.mtime_ns = files.mtime_ns"
+    ")"
+)
+_UPDATE_CHANGED_SQL = (
+    "UPDATE files "
+    "SET size = (SELECT scan_stage.size FROM scan_stage WHERE scan_stage.path = files.path), "
+    "    mtime_ns = (SELECT scan_stage.mtime_ns FROM scan_stage WHERE scan_stage.path = files.path), "
+    "    scanned_at = (SELECT scan_stage.scanned_at FROM scan_stage WHERE scan_stage.path = files.path), "
+    "    xxhash = NULL, "
+    "    canonical_date = NULL, "
+    "    date_source = NULL, "
+    "    exif_json = NULL, "
+    "    kind = NULL "
+    "WHERE (path = ? OR path LIKE ? OR path LIKE ?) "
+    "AND EXISTS ("
+    "    SELECT 1 FROM scan_stage "
+    "    WHERE scan_stage.path = files.path "
+    "      AND (scan_stage.size != files.size OR scan_stage.mtime_ns != files.mtime_ns)"
+    ")"
+)
+_DELETE_MISSING_SQL = (
+    "DELETE FROM files "
+    "WHERE (path = ? OR path LIKE ? OR path LIKE ?) "
+    "AND NOT EXISTS (SELECT 1 FROM scan_stage WHERE scan_stage.path = files.path)"
 )
 _STAGE_INSERT_SQL = (
     "INSERT OR REPLACE INTO scan_stage (path, size, mtime_ns, scanned_at) "
@@ -52,13 +90,13 @@ def _flush_stage_batch(conn, batch: List[WalkedFile]) -> None:
 
 def _replace_rows_for_root(conn, root: str) -> None:
     normalized = root.rstrip("/\\")
+    scope = (normalized, f"{normalized}/%", f"{normalized}\\%")
     conn.execute("BEGIN")
     try:
-        conn.execute(
-            "DELETE FROM files WHERE path = ? OR path LIKE ? OR path LIKE ?",
-            (normalized, f"{normalized}/%", f"{normalized}\\%"),
-        )
-        conn.execute(_INSERT_SQL)
+        conn.execute(_UPDATE_UNCHANGED_SQL, scope)
+        conn.execute(_UPDATE_CHANGED_SQL, scope)
+        conn.execute(_INSERT_NEW_SQL)
+        conn.execute(_DELETE_MISSING_SQL, scope)
         conn.execute("COMMIT")
     except Exception:
         try:
