@@ -51,6 +51,47 @@ const MIGRATIONS: Array<{ id: number; sql: string }> = [
       CREATE INDEX idx_actions_session ON actions(session_id);
     `,
   },
+  {
+    id: 2,
+    sql: `
+      CREATE TABLE image_features (
+        file_id          INTEGER PRIMARY KEY REFERENCES files(id) ON DELETE CASCADE,
+        phash            BLOB,
+        clip_embedding   BLOB,
+        sharpness        REAL,
+        brightness_mean  REAL,
+        highlight_clip   REAL,
+        shadow_clip      REAL,
+        face_count       INTEGER,
+        face_quality     REAL,
+        nima_score       REAL,
+        width            INTEGER,
+        height           INTEGER,
+        computed_at      TEXT NOT NULL
+      );
+      CREATE INDEX idx_image_features_phash ON image_features(phash);
+
+      CREATE TABLE clusters (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        method              TEXT NOT NULL,
+        confidence          REAL NOT NULL,
+        created_at          TEXT NOT NULL,
+        applied_session_id  TEXT REFERENCES sessions(id)
+      );
+
+      CREATE TABLE cluster_members (
+        cluster_id       INTEGER NOT NULL REFERENCES clusters(id) ON DELETE CASCADE,
+        file_id          INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+        rank             INTEGER NOT NULL,
+        score            REAL NOT NULL,
+        score_breakdown  TEXT NOT NULL,
+        is_winner        INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (cluster_id, file_id)
+      );
+      CREATE INDEX idx_cluster_members_file ON cluster_members(file_id);
+      CREATE INDEX idx_cluster_members_winner ON cluster_members(cluster_id, is_winner);
+    `,
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {
