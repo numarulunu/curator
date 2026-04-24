@@ -92,6 +92,17 @@ const MIGRATIONS: Array<{ id: number; sql: string }> = [
       CREATE INDEX idx_cluster_members_winner ON cluster_members(cluster_id, is_winner);
     `,
   },
+  {
+    id: 3,
+    sql: `
+      CREATE TABLE analysis_settings (
+        id             INTEGER PRIMARY KEY CHECK (id = 1),
+        settings_json  TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      );
+      ALTER TABLE clusters ADD COLUMN thresholds_json TEXT;
+    `,
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

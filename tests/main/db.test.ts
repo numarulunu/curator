@@ -77,3 +77,26 @@ describe("db", () => {
     );
   });
 });
+
+describe("migration 3 — analysis settings", () => {
+  it("creates analysis_settings with a single-row constraint", () => {
+    const db = new Database(":memory:");
+    runMigrations(db);
+    const cols = db
+      .prepare("PRAGMA table_info(analysis_settings)")
+      .all() as Array<{ name: string; pk: number }>;
+    const names = cols.map((c) => c.name).sort();
+    expect(names).toEqual(["id", "settings_json", "updated_at"].sort());
+    const pk = cols.find((c) => c.name === "id");
+    expect(pk?.pk).toBe(1);
+  });
+
+  it("adds thresholds_json column to clusters", () => {
+    const db = new Database(":memory:");
+    runMigrations(db);
+    const cols = db
+      .prepare("PRAGMA table_info(clusters)")
+      .all() as Array<{ name: string }>;
+    expect(cols.map((c) => c.name)).toContain("thresholds_json");
+  });
+});
