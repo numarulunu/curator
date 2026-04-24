@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type {
+  AnalysisProgress,
+  AnalysisSettings,
   AppVersion,
   DuplicateCluster,
   MisplacedFile,
@@ -10,6 +12,8 @@ import type {
   SidecarVersion,
   ZeroByteFile,
 } from "@shared/types";
+import { AnalysisProgressBar } from "../components/AnalysisProgressBar";
+import { AnalysisSettingsPanel } from "../components/AnalysisSettingsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ModelDownloadBanner } from "../components/ModelDownloadBanner";
 import { useCuratorEvents } from "../hooks/useCuratorEvents";
@@ -39,7 +43,9 @@ export function Dashboard(): JSX.Element {
   const [filter, setFilter] = useState<DashboardSurfaceFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
+  const [settings, setSettings] = useState<AnalysisSettings | null>(null);
   const [building, setBuilding] = useState(false);
   const [applying, setApplying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,14 +54,23 @@ export function Dashboard(): JSX.Element {
   const [undoTarget, setUndoTarget] = useState<Session | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
-  const [distilling, setDistilling] = useState(false);
 
   useEffect(() => {
     window.curator.getVersion().then(setApp).catch(() => setApp(null));
     window.curator.getSidecarVersion().then(setSidecar).catch(() => setSidecar(null));
     window.curator.ping().then(setPing).catch(() => setPing(false));
+    window.curator.getAnalysisSettings().then(setSettings).catch(() => setSettings(null));
     void loadSessions();
   }, []);
+
+  useEffect(() => {
+    if (!event || event.kind !== "analysis-progress") return;
+    const phase = event.phase as AnalysisProgress["phase"];
+    const processed = typeof event.processed === "number" ? event.processed : undefined;
+    const total = typeof event.total === "number" ? event.total : undefined;
+    const note = typeof event.note === "string" ? event.note : undefined;
+    setAnalysisProgress({ phase, processed, total, note });
+  }, [event]);
 
   useEffect(() => {
     setResult(null);
@@ -68,6 +83,11 @@ export function Dashboard(): JSX.Element {
     setFilter("all");
     setError(null);
   }, [archiveRoot]);
+
+  function handleSettingsChange(next: AnalysisSettings): void {
+    setSettings(next);
+    void window.curator.saveAnalysisSettings(next);
+  }
 
   async function loadSessions(): Promise<void> {
     setSessionsLoading(true);
@@ -109,38 +129,30 @@ export function Dashboard(): JSX.Element {
 
   async function analyzeArchive(): Promise<void> {
     if (!archiveRoot) return;
-    setAnalyzing(true);
+    setRunning(true);
+    setAnalysisProgress({ phase: "scan" });
     setError(null);
     setProposals(null);
     try {
-      const scan = await window.curator.scan(archiveRoot);
-      setResult(scan);
-      if (scan.scanned === 0) {
-        setDuplicates([]);
-        setMisplaced([]);
-        setZeroByte([]);
-        setProposals(null);
-        setQuery("");
-        setFilter("all");
-        setIsAnalyzed(true);
+      const analysisResult = await window.curator.runAnalysis(archiveRoot);
+      if (analysisResult.clusters_created > 0) {
+        navigate("/clusters");
+      } else {
         push({
-          kind: "error",
-          title: "No supported media files found",
-          message: "Curator only indexes supported photo/video formats in the selected archive.",
+          kind: "success",
+          title: "Analysis complete",
+          message: `${analysisResult.scanned} files scanned`,
         });
-        return;
       }
       setIsAnalyzed(true);
-      await window.curator.hashAll(archiveRoot);
-      await window.curator.resolveDates(archiveRoot);
       await loadFindings();
-      push({ kind: "success", title: "Analysis complete", message: `${scan.scanned} files indexed.` });
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
       setError(message);
       push({ kind: "error", title: "Analysis failed", message });
     } finally {
-      setAnalyzing(false);
+      setRunning(false);
+      setAnalysisProgress({ phase: "done" });
     }
   }
 
@@ -202,14 +214,14 @@ export function Dashboard(): JSX.Element {
     setRetryingId(sessionId);
     setError(null);
     try {
-      const result = await window.curator.retrySession(sessionId);
+      const retryResult = await window.curator.retrySession(sessionId);
       await loadSessions();
       await loadFindings();
-      if (result.skipped) {
+      if (retryResult.skipped) {
         push({ kind: "success", title: "Already complete", message: "No pending actions to retry." });
       } else {
-        const total = result.ok + result.failed;
-        push({ kind: "success", title: "Retry complete", message: `${result.ok}/${total} action${total === 1 ? "" : "s"} succeeded.` });
+        const total = retryResult.ok + retryResult.failed;
+        push({ kind: "success", title: "Retry complete", message: `${retryResult.ok}/${total} action${total === 1 ? "" : "s"} succeeded.` });
       }
     } catch (err) {
       const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
@@ -217,24 +229,6 @@ export function Dashboard(): JSX.Element {
       push({ kind: "error", title: "Retry failed", message });
     } finally {
       setRetryingId(null);
-    }
-  }
-
-  async function runSmartDistill(): Promise<void> {
-    if (!archiveRoot) return;
-    setDistilling(true);
-    setError(null);
-    try {
-      // TODO(Task 12): replace with window.curator.runAnalysis
-      // const next = await window.curator.smartDistill(archiveRoot);
-      // push({ kind: "success", title: "Smart distill complete", message: `${next.clusters_created} cluster${next.clusters_created === 1 ? "" : "s"} across ${next.files_clustered} photos.` });
-      navigate("/clusters");
-    } catch (err) {
-      const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
-      setError(message);
-      push({ kind: "error", title: "Smart distill failed", message });
-    } finally {
-      setDistilling(false);
     }
   }
 
@@ -282,7 +276,7 @@ export function Dashboard(): JSX.Element {
     [sessions],
   );
 
-  const footerBusy = analyzing || building || applying || distilling;
+  const footerBusy = running || building || applying;
 
   async function onPrimaryAction(): Promise<void> {
     if (primaryAction.stage === "select") {
@@ -337,11 +331,16 @@ export function Dashboard(): JSX.Element {
         retryingId={retryingId}
       />
 
-      <div className="smart-distill-entry">
+      <div className="analyze-entry">
         <ModelDownloadBanner />
-        <button type="button" onClick={() => void runSmartDistill()} disabled={!archiveRoot || distilling || analyzing || applying}>
-          {distilling ? "Distilling..." : "Smart distill"}
-        </button>
+        {settings !== null && (
+          <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
+        )}
+        <AnalysisProgressBar
+          progress={analysisProgress}
+          running={running}
+          onCancel={() => { void window.curator.cancelAnalysis(); }}
+        />
       </div>
 
       <ConfirmDialog
