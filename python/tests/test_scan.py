@@ -6,8 +6,17 @@ import time
 import pytest
 from pathlib import Path
 
-from curator import scan
+from curator import hashall, scan
 from curator.walker import ScanRootError
+
+
+DERIVED_METADATA = (
+    "feedfacecafebeef",
+    "2024-01-02T03:04:05",
+    "exif",
+    '{"Make":"Canon"}',
+    "photo",
+)
 
 
 def test_scan_inserts_rows_into_files_table(db: Path, tmp_path: Path):
@@ -73,6 +82,129 @@ def test_scan_is_idempotent_on_rerun(db: Path, tmp_path: Path):
             "SELECT mtime_ns FROM files WHERE path = ?", (str(target),)
         ).fetchone()[0]
         assert mtime_after > mtime_before
+    finally:
+        con.close()
+
+
+def test_scan_preserves_derived_metadata_for_unchanged_files(db: Path, tmp_path: Path):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    target = archive / "a.jpg"
+    target.write_bytes(b"jpeg-bytes")
+
+    first = scan.scan(str(archive))
+    assert first["scanned"] == 1
+
+    con = sqlite3.connect(str(db))
+    try:
+        con.execute(
+            """
+            UPDATE files
+               SET xxhash = ?, canonical_date = ?, date_source = ?, exif_json = ?, kind = ?
+             WHERE path = ?
+            """,
+            (*DERIVED_METADATA, str(target)),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    second = scan.scan(str(archive))
+    assert second["scanned"] == 1
+
+    con = sqlite3.connect(str(db))
+    try:
+        row = con.execute(
+            """
+            SELECT xxhash, canonical_date, date_source, exif_json, kind
+              FROM files
+             WHERE path = ?
+            """,
+            (str(target),),
+        ).fetchone()
+        assert row == DERIVED_METADATA
+    finally:
+        con.close()
+
+
+def test_scan_clears_derived_metadata_when_file_signature_changes(
+    db: Path, tmp_path: Path
+):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    target = archive / "a.jpg"
+    target.write_bytes(b"jpeg-bytes")
+
+    first = scan.scan(str(archive))
+    assert first["scanned"] == 1
+
+    con = sqlite3.connect(str(db))
+    try:
+        con.execute(
+            """
+            UPDATE files
+               SET xxhash = ?, canonical_date = ?, date_source = ?, exif_json = ?, kind = ?
+             WHERE path = ?
+            """,
+            (*DERIVED_METADATA, str(target)),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    time.sleep(0.05)
+    target.write_bytes(b"jpeg-bytes-modified-longer")
+
+    second = scan.scan(str(archive))
+    assert second["scanned"] == 1
+
+    con = sqlite3.connect(str(db))
+    try:
+        row = con.execute(
+            """
+            SELECT xxhash, canonical_date, date_source, exif_json, kind
+              FROM files
+             WHERE path = ?
+            """,
+            (str(target),),
+        ).fetchone()
+        assert row == (None, None, None, None, None)
+    finally:
+        con.close()
+
+
+def test_rescan_does_not_queue_unchanged_files_for_rehash(db: Path, tmp_path: Path):
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    target = archive / "a.jpg"
+    target.write_bytes(b"jpeg-bytes")
+
+    first_scan = scan.scan(str(archive))
+    assert first_scan["scanned"] == 1
+
+    first_hash = hashall.hash_all(root=str(archive))
+    assert first_hash == {"hashed": 1, "skipped": 0}
+
+    con = sqlite3.connect(str(db))
+    try:
+        digest_before = con.execute(
+            "SELECT xxhash FROM files WHERE path = ?", (str(target),)
+        ).fetchone()[0]
+    finally:
+        con.close()
+
+    second_scan = scan.scan(str(archive))
+    assert second_scan["scanned"] == 1
+
+    second_hash = hashall.hash_all(root=str(archive))
+    assert second_hash == {"hashed": 0, "skipped": 0}
+
+    con = sqlite3.connect(str(db))
+    try:
+        digest_after = con.execute(
+            "SELECT xxhash FROM files WHERE path = ?", (str(target),)
+        ).fetchone()[0]
+        assert digest_after == digest_before
     finally:
         con.close()
 
