@@ -82,6 +82,14 @@ def _cluster_smart_handler(params: dict) -> dict:
     return _cluster_smart.run(root=params.get("root"))
 
 
+from curator import grade as _grade
+
+
+@register("gradeClusters")
+def _grade_clusters_handler(params: dict) -> dict:
+    return _grade.run(root=params.get("root"))
+
+
 @register("resolveDates")
 def _resolve_dates_handler(_params: dict) -> dict:
     con = connect()
