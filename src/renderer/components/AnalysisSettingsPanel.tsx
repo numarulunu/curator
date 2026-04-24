@@ -1,5 +1,4 @@
 // src/renderer/components/AnalysisSettingsPanel.tsx
-import { useState } from "react";
 import type { AnalysisSettings, AiMode, PresetName, ProfileName } from "@shared/types";
 
 interface Props {
@@ -20,14 +19,9 @@ const CUSTOM_FIELDS: Array<{ key: string; label: string; min: number; max: numbe
 ];
 
 export function AnalysisSettingsPanel({ settings, onChange }: Props) {
-  const [localPreset, setLocalPreset] = useState<PresetName>(settings.preset);
-
   const update = (patch: Partial<AnalysisSettings>) => onChange({ ...settings, ...patch });
 
-  const selectPreset = (p: PresetName) => {
-    setLocalPreset(p);
-    update({ preset: p });
-  };
+  const selectPreset = (p: PresetName) => update({ preset: p });
 
   return (
     <section className="analysis-settings">
@@ -63,7 +57,7 @@ export function AnalysisSettingsPanel({ settings, onChange }: Props) {
               <button
                 key={p}
                 data-testid={`preset-${p}`}
-                aria-pressed={localPreset === p}
+                aria-pressed={settings.preset === p}
                 onClick={() => selectPreset(p)}
               >
                 {p}
@@ -71,7 +65,7 @@ export function AnalysisSettingsPanel({ settings, onChange }: Props) {
             ))}
           </div>
 
-          {localPreset === "custom" && (
+          {settings.preset === "custom" && (
             <div className="custom-drawer">
               {CUSTOM_FIELDS.map((f) => (
                 <label key={f.key}>
@@ -85,7 +79,6 @@ export function AnalysisSettingsPanel({ settings, onChange }: Props) {
                     value={settings.preset_custom[f.key] ?? ""}
                     onChange={(e) => {
                       const n = Number(e.target.value);
-                      setLocalPreset("custom");
                       update({
                         preset: "custom",
                         preset_custom: { ...settings.preset_custom, [f.key]: n },

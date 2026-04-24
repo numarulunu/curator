@@ -1,5 +1,6 @@
 // tests/renderer/AnalysisSettingsPanel.test.tsx
 import { describe, expect, it, vi, afterEach } from "vitest";
+import { useState } from "react";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { AnalysisSettingsPanel } from "../../src/renderer/components/AnalysisSettingsPanel";
 import type { AnalysisSettings } from "@shared/types";
@@ -14,6 +15,16 @@ const DEFAULTS: AnalysisSettings = {
 };
 
 afterEach(() => cleanup());
+
+function Controlled({ initial, onChange }: { initial: AnalysisSettings; onChange?: (s: AnalysisSettings) => void }) {
+  const [settings, setSettings] = useState(initial);
+  return (
+    <AnalysisSettingsPanel
+      settings={settings}
+      onChange={(next) => { setSettings(next); onChange?.(next); }}
+    />
+  );
+}
 
 describe("AnalysisSettingsPanel", () => {
   it("hides mode/preset when similar-photo review is off", () => {
@@ -32,7 +43,7 @@ describe("AnalysisSettingsPanel", () => {
   it("switches preset to custom when a threshold is edited", () => {
     const onChange = vi.fn();
     const s = { ...DEFAULTS, similar_photo_review: true, preset: "balanced" as const };
-    render(<AnalysisSettingsPanel settings={s} onChange={onChange} />);
+    render(<Controlled initial={s} onChange={onChange} />);
     fireEvent.click(screen.getByTestId("preset-custom"));
     fireEvent.change(screen.getByTestId("custom-phash_hamming"), { target: { value: "3" } });
     const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];

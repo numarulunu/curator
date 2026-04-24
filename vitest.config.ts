@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
-    environmentMatchGlobs: [["tests/renderer/AnalysisSettingsPanel.test.tsx", "jsdom"]],
+    environmentMatchGlobs: [["tests/renderer/**/*.test.tsx", "jsdom"]],
   },
   resolve: {
     alias: {
