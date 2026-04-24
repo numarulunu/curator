@@ -3,6 +3,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { Toaster } from "./components/ui/Toaster";
 import { ArchiveProvider } from "./state/ArchiveContext";
 import { ToastProvider } from "./state/ToastContext";
+import { Clusters } from "./routes/Clusters";
 import { Dashboard } from "./routes/Dashboard";
 
 export default function App(): JSX.Element {
@@ -13,6 +14,7 @@ export default function App(): JSX.Element {
           <AppShell>
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/clusters" element={<Clusters />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </AppShell>

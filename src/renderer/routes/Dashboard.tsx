@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type {
   AppVersion,
   DuplicateCluster,
@@ -10,6 +11,7 @@ import type {
   ZeroByteFile,
 } from "@shared/types";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { ModelDownloadBanner } from "../components/ModelDownloadBanner";
 import { useCuratorEvents } from "../hooks/useCuratorEvents";
 import { buildReviewRows, resolvePrimaryAction } from "../lib/dashboard";
 import { countProposalActions, stripIpcPrefix } from "../lib/curatorUi";
@@ -22,6 +24,7 @@ export function Dashboard(): JSX.Element {
   const { archiveRoot, outputRoot, pickArchive, pickOutput } = useArchive();
   const { push } = useToast();
   const event = useCuratorEvents();
+  const navigate = useNavigate();
 
   const [app, setApp] = useState<AppVersion | null>(null);
   const [sidecar, setSidecar] = useState<SidecarVersion | null>(null);
@@ -45,6 +48,7 @@ export function Dashboard(): JSX.Element {
   const [undoTarget, setUndoTarget] = useState<Session | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [distilling, setDistilling] = useState(false);
 
   useEffect(() => {
     window.curator.getVersion().then(setApp).catch(() => setApp(null));
@@ -216,6 +220,23 @@ export function Dashboard(): JSX.Element {
     }
   }
 
+  async function runSmartDistill(): Promise<void> {
+    if (!archiveRoot) return;
+    setDistilling(true);
+    setError(null);
+    try {
+      const next = await window.curator.smartDistill(archiveRoot);
+      push({ kind: "success", title: "Smart distill complete", message: `${next.clusters_created} cluster${next.clusters_created === 1 ? "" : "s"} across ${next.files_clustered} photos.` });
+      navigate("/clusters");
+    } catch (err) {
+      const message = stripIpcPrefix(err instanceof Error ? err.message : String(err));
+      setError(message);
+      push({ kind: "error", title: "Smart distill failed", message });
+    } finally {
+      setDistilling(false);
+    }
+  }
+
   const reviewRows = useMemo(() => buildReviewRows(duplicates, misplaced, zeroByte), [duplicates, misplaced, zeroByte]);
 
   const filteredRows = useMemo(() => {
@@ -260,7 +281,7 @@ export function Dashboard(): JSX.Element {
     [sessions],
   );
 
-  const footerBusy = analyzing || building || applying;
+  const footerBusy = analyzing || building || applying || distilling;
 
   async function onPrimaryAction(): Promise<void> {
     if (primaryAction.stage === "select") {
@@ -314,6 +335,13 @@ export function Dashboard(): JSX.Element {
         undoingId={undoingId}
         retryingId={retryingId}
       />
+
+      <div className="smart-distill-entry">
+        <ModelDownloadBanner />
+        <button type="button" onClick={() => void runSmartDistill()} disabled={!archiveRoot || distilling || analyzing || applying}>
+          {distilling ? "Distilling..." : "Smart distill"}
+        </button>
+      </div>
 
       <ConfirmDialog
         open={confirmApplyOpen}
