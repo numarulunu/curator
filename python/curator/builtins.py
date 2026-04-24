@@ -80,7 +80,7 @@ from curator import cluster_smart as _cluster_smart
 
 @register("clusterSmart")
 def _cluster_smart_handler(params: dict) -> dict:
-    return _cluster_smart.run(root=params.get("root"))
+    return _cluster_smart.run(root=params.get("root"), thresholds=params.get("thresholds"))
 
 
 from curator import grade as _grade

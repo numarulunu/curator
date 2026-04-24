@@ -167,15 +167,24 @@ def stage_clip(
     return clusters
 
 
-def run(root: Optional[str]) -> Dict[str, int]:
+def run(root: Optional[str], thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, int]:
+    t = thresholds or {
+        "phash_hamming": 8, "clip_cosine": 0.90,
+        "exif_time_s": 1800, "gps_m": 150, "min_confidence": 0.88,
+    }
     con = _db.connect()
     try:
         items = _load_items(con, root)
-        phash_clusters = stage_phash(items, hamming_threshold=8)
+        phash_clusters = stage_phash(items, hamming_threshold=int(t["phash_hamming"]))
         clustered_ids = {fid for c in phash_clusters for fid in c["file_ids"]}
         remainder = [it for it in items if it["file_id"] not in clustered_ids]
-        clip_clusters = stage_clip(remainder, cosine_threshold=0.90)
-        all_clusters = phash_clusters + clip_clusters
+        clip_clusters = stage_clip(
+            remainder,
+            cosine_threshold=float(t["clip_cosine"]),
+            time_window_s=int(t["exif_time_s"]),
+            gps_window_m=float(t["gps_m"]),
+        )
+        all_clusters = [c for c in (phash_clusters + clip_clusters) if c["confidence"] >= float(t["min_confidence"])]
 
         if root:
             normalized = root.rstrip("/\\")
@@ -194,11 +203,12 @@ def run(root: Optional[str]) -> Dict[str, int]:
             con.execute("DELETE FROM cluster_members")
             con.execute("DELETE FROM clusters")
 
+        thresholds_json = json.dumps(t, sort_keys=True)
         files_clustered = 0
         for c in all_clusters:
             cur = con.execute(
-                "INSERT INTO clusters (method, confidence, created_at) VALUES (?, ?, datetime('now'))",
-                (c["method"], c["confidence"]),
+                "INSERT INTO clusters (method, confidence, created_at, thresholds_json) VALUES (?, ?, datetime('now'), ?)",
+                (c["method"], c["confidence"], thresholds_json),
             )
             cluster_id = cur.lastrowid
             for rank, fid in enumerate(c["file_ids"]):

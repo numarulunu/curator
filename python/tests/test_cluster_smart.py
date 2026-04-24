@@ -49,7 +49,7 @@ def test_run_clusters_pooled_clip_embeddings(tmp_path, monkeypatch):
         "CREATE TABLE IF NOT EXISTS image_features (file_id INTEGER PRIMARY KEY, phash BLOB, clip_embedding BLOB, width INTEGER, height INTEGER, computed_at TEXT)"
     )
     con.execute(
-        "CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT)"
+        "CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT, thresholds_json TEXT)"
     )
     con.execute(
         "CREATE TABLE IF NOT EXISTS cluster_members (cluster_id INTEGER NOT NULL, file_id INTEGER NOT NULL, rank INTEGER NOT NULL, score REAL NOT NULL, score_breakdown TEXT NOT NULL, is_winner INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (cluster_id, file_id))"
@@ -87,7 +87,7 @@ def test_run_end_to_end_returns_empty_summary(tmp_path, monkeypatch):
         "CREATE TABLE IF NOT EXISTS image_features (file_id INTEGER PRIMARY KEY, phash BLOB, clip_embedding BLOB, width INTEGER, height INTEGER, computed_at TEXT)"
     )
     con.execute(
-        "CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT)"
+        "CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT, thresholds_json TEXT)"
     )
     con.execute(
         "CREATE TABLE IF NOT EXISTS cluster_members (cluster_id INTEGER NOT NULL, file_id INTEGER NOT NULL, rank INTEGER NOT NULL, score REAL NOT NULL, score_breakdown TEXT NOT NULL, is_winner INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (cluster_id, file_id))"
@@ -99,3 +99,54 @@ def test_run_end_to_end_returns_empty_summary(tmp_path, monkeypatch):
 
 def test_cluster_smart_rpc_method_is_registered():
     assert "clusterSmart" in REGISTRY
+
+
+def test_run_accepts_thresholds_bundle_and_stores_on_cluster(tmp_path, monkeypatch):
+    from curator import db as _db
+    from curator import cluster_smart
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "th.db"))
+    con = _db.connect()
+    _db.ensure_schema(con)
+    con.execute("CREATE TABLE IF NOT EXISTS image_features (file_id INTEGER PRIMARY KEY, phash BLOB, clip_embedding BLOB, width INTEGER, height INTEGER, computed_at TEXT)")
+    con.execute("CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT, thresholds_json TEXT)")
+    con.execute("CREATE TABLE IF NOT EXISTS cluster_members (cluster_id INTEGER NOT NULL, file_id INTEGER NOT NULL, rank INTEGER NOT NULL, score REAL NOT NULL, score_breakdown TEXT NOT NULL, is_winner INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (cluster_id, file_id))")
+    # 2 identical phash rows
+    for fid in (1, 2):
+        con.execute("INSERT INTO files (id, path, size, mtime_ns, scanned_at) VALUES (?, ?, 1, 0, datetime('now'))", (fid, f"/p/{fid}.jpg"))
+        con.execute("INSERT INTO image_features (file_id, phash, width, height, computed_at) VALUES (?, ?, 100, 100, datetime('now'))", (fid, (0).to_bytes(8, "big")))
+    con.close()
+
+    thresholds = {"phash_hamming": 3, "clip_cosine": 0.95, "exif_time_s": 600, "gps_m": 50, "min_confidence": 0.9}
+    res = cluster_smart.run(root=None, thresholds=thresholds)
+    assert res["clusters_created"] == 1
+
+    con = _db.connect()
+    import json
+    row = con.execute("SELECT thresholds_json FROM clusters").fetchone()
+    con.close()
+    assert json.loads(row[0]) == thresholds
+
+
+def test_run_reclusters_when_thresholds_change(tmp_path, monkeypatch):
+    # Prior cluster with loose thresholds, re-run with strict → old cluster cleared
+    from curator import db as _db
+    from curator import cluster_smart
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "rc.db"))
+    con = _db.connect()
+    _db.ensure_schema(con)
+    con.execute("CREATE TABLE IF NOT EXISTS image_features (file_id INTEGER PRIMARY KEY, phash BLOB, clip_embedding BLOB, width INTEGER, height INTEGER, computed_at TEXT)")
+    con.execute("CREATE TABLE IF NOT EXISTS clusters (id INTEGER PRIMARY KEY AUTOINCREMENT, method TEXT NOT NULL, confidence REAL NOT NULL, created_at TEXT NOT NULL, applied_session_id TEXT, thresholds_json TEXT)")
+    con.execute("CREATE TABLE IF NOT EXISTS cluster_members (cluster_id INTEGER NOT NULL, file_id INTEGER NOT NULL, rank INTEGER NOT NULL, score REAL NOT NULL, score_breakdown TEXT NOT NULL, is_winner INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (cluster_id, file_id))")
+    for fid, phb in ((1, 0), (2, 0b11)):  # hamming 2
+        con.execute("INSERT INTO files (id, path, size, mtime_ns, scanned_at) VALUES (?, ?, 1, 0, datetime('now'))", (fid, f"/q/{fid}.jpg"))
+        con.execute("INSERT INTO image_features (file_id, phash, width, height, computed_at) VALUES (?, ?, 100, 100, datetime('now'))", (fid, phb.to_bytes(8, "big")))
+    con.close()
+
+    loose = {"phash_hamming": 8, "clip_cosine": 0.90, "exif_time_s": 1800, "gps_m": 150, "min_confidence": 0.88}
+    strict = {"phash_hamming": 1, "clip_cosine": 0.99, "exif_time_s": 60, "gps_m": 10, "min_confidence": 0.99}
+
+    r1 = cluster_smart.run(root=None, thresholds=loose)
+    assert r1["clusters_created"] == 1
+
+    r2 = cluster_smart.run(root=None, thresholds=strict)
+    assert r2["clusters_created"] == 0  # stricter phash cutoff splits them
