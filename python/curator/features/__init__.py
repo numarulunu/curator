@@ -3,8 +3,30 @@ from __future__ import annotations
 from typing import Optional
 
 from curator import db as _db
+from curator import pipeline as _pipeline
 from curator.features import phash as _phash
 from curator.features import quality as _quality
+
+
+def _face_metrics(path: str):
+    from curator.features import faces as _faces
+    return _faces.compute(path)
+
+
+def _clip_vec(path: str):
+    from curator.features import clip as _clip
+    return _clip.embed(path)
+
+
+def _nima_val(path: str):
+    from curator.features import nima as _nima
+    return _nima.score(path)
+
+
+# injection points for tests
+_faces_compute = _face_metrics
+_clip_embed = _clip_vec
+_nima_score = _nima_val
 
 
 def _record_failed_feature(file_id: int) -> None:
@@ -24,7 +46,10 @@ def _record_failed_feature(file_id: int) -> None:
         con.close()
 
 
-def extract_one(file_id: int, path: str, skip_ai: bool = False) -> None:
+def extract_one(file_id: int, path: str, ai_mode: str = "full") -> None:
+    if ai_mode == "off":
+        raise ValueError("extract_one should not be called with ai_mode=off")
+
     ph = _phash.compute(path)
     q = _quality.compute(path)
     face_count = 0
@@ -32,25 +57,28 @@ def extract_one(file_id: int, path: str, skip_ai: bool = False) -> None:
     clip_blob: Optional[bytes] = None
     nima_val = 0.0
 
-    if not skip_ai:
+    if ai_mode in ("lite", "full"):
         try:
-            from curator.features import faces as _faces
+            import curator.features as _ff
+            v = _ff._clip_embed(path)
+            if v is not None:
+                clip_blob = v.tobytes()
+        except Exception:
+            pass
 
-            f = _faces.compute(path)
-            face_count, face_quality = f.count, f.quality
+    if ai_mode == "full":
+        try:
+            import curator.features as _ff
+            f = _ff._faces_compute(path)
+            if f is not None:
+                face_count, face_quality = f.count, f.quality
         except Exception:
             pass
         try:
-            from curator.features import clip as _clip
-
-            v = _clip.embed(path)
-            clip_blob = v.tobytes()
-        except Exception:
-            pass
-        try:
-            from curator.features import nima as _nima
-
-            nima_val = _nima.score(path)
+            import curator.features as _ff
+            val = _ff._nima_score(path)
+            if val is not None:
+                nima_val = float(val)
         except Exception:
             pass
 
@@ -83,7 +111,25 @@ def extract_one(file_id: int, path: str, skip_ai: bool = False) -> None:
         con.close()
 
 
-def extract_batch(root: Optional[str], batch_size: int = 200, skip_ai: bool = False) -> dict:
+def extract_batch(root: Optional[str], batch_size: int = 200, ai_mode: str = "full") -> dict:
+    if ai_mode == "off":
+        con = _db.connect()
+        try:
+            if root:
+                normalized = root.rstrip("/\\")
+                total = con.execute(
+                    "SELECT COUNT(*) FROM files WHERE (path = ? OR path LIKE ? OR path LIKE ?)",
+                    (normalized, f"{normalized}/%", f"{normalized}\\%"),
+                ).fetchone()[0]
+            else:
+                total = con.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        finally:
+            con.close()
+        return {"processed": 0, "skipped": 0, "skipped_mode_off": total, "errors": []}
+
+    if _pipeline.should_cancel():
+        return {"processed": 0, "skipped": 0, "errors": [], "cancelled": True}
+
     con = _db.connect()
     try:
         if root:
@@ -116,8 +162,10 @@ def extract_batch(root: Optional[str], batch_size: int = 200, skip_ai: bool = Fa
     processed = 0
     errors = []
     for fid, path in rows:
+        if _pipeline.should_cancel():
+            return {"processed": processed, "skipped": 0, "errors": errors, "cancelled": True}
         try:
-            extract_one(fid, path, skip_ai=skip_ai)
+            extract_one(fid, path, ai_mode=ai_mode)
             processed += 1
         except Exception as exc:
             message = str(exc)

@@ -71,7 +71,7 @@ def _extract_features_handler(params: dict) -> dict:
     return _features.extract_batch(
         root=params.get("root"),
         batch_size=int(params.get("batch_size", 200)),
-        skip_ai=bool(params.get("skip_ai", False)),
+        ai_mode=str(params.get("ai_mode", "full")),
     )
 
 
