@@ -1,20 +1,12 @@
-﻿import type Database from "better-sqlite3";
+import type Database from "better-sqlite3";
+import type { MisplacedFile, ZeroByteFile } from "@shared/types";
 
-function scopeClause(archiveRoot: string): { sql: string; params: [string, string, string] } {
+export function scopeClause(archiveRoot: string): { sql: string; params: [string, string, string] } {
   const normalized = archiveRoot.replace(/[\\/]+$/, "");
   return {
     sql: " AND (path = ? OR path LIKE ? OR path LIKE ?)",
     params: [normalized, `${normalized}/%`, `${normalized}\\%`],
   };
-}
-
-export interface MisplacedFile {
-  id: number;
-  path: string;
-  canonical_date: string;
-  date_source: string;
-  folder_year: number;
-  canonical_year: number;
 }
 
 export function listMisplacedByDate(db: Database.Database, archiveRoot: string): MisplacedFile[] {
@@ -43,11 +35,6 @@ export function listMisplacedByDate(db: Database.Database, archiveRoot: string):
     }
   }
   return out;
-}
-
-export interface ZeroByteFile {
-  id: number;
-  path: string;
 }
 
 export function listZeroByte(db: Database.Database, archiveRoot: string): ZeroByteFile[] {

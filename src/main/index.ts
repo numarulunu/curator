@@ -8,9 +8,11 @@ import type {
   ApplyResult,
   DuplicateCluster,
   HashAllResult,
+  MisplacedFile,
   Proposal,
   ScanResult,
   SidecarVersion,
+  ZeroByteFile,
 } from "@shared/types";
 import { applyProposals, retrySession } from "./apply";
 import { undoSession } from "./undo";
@@ -22,9 +24,7 @@ import {
   listMisplacedByDate,
   listSessions,
   listZeroByte,
-  type MisplacedFile,
   type SessionRow,
-  type ZeroByteFile,
 } from "./queries";
 import { Sidecar } from "./sidecar";
 import { createUpdaterLogger, startAutoUpdater } from "./updater";

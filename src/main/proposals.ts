@@ -1,14 +1,7 @@
 ﻿import type Database from "better-sqlite3";
 import { basename, join } from "node:path";
 import type { Proposal } from "@shared/types";
-
-function scopeClause(archiveRoot: string): { sql: string; params: [string, string, string] } {
-  const normalized = archiveRoot.replace(/[\\/]+$/, "");
-  return {
-    sql: " AND (path = ? OR path LIKE ? OR path LIKE ?)",
-    params: [normalized, `${normalized}/%`, `${normalized}\\%`],
-  };
-}
+import { scopeClause } from "./queries";
 
 export type Action = Proposal["action"];
 export type { Proposal } from "@shared/types";
