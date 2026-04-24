@@ -26,7 +26,7 @@ describe("DashboardSurface", () => {
         onUndoTarget: () => {},
         ping: true,
         primaryAction: { stage: "select", label: "Select Archive" },
-        progressLabel: null,
+
         proposalCount: 0,
         proposalCounts: { quarantine: 0, move_to_year: 0 },
         query: "",
@@ -68,7 +68,7 @@ describe("DashboardSurface", () => {
         onUndoTarget: () => {},
         ping: true,
         primaryAction: { stage: "build", label: "Build Plan" },
-        progressLabel: null,
+
         proposalCount: 0,
         proposalCounts: { quarantine: 0, move_to_year: 0 },
         query: "",
@@ -110,7 +110,7 @@ describe("DashboardSurface", () => {
         onUndoTarget: () => {},
         ping: true,
         primaryAction: { stage: "build", label: "Build Plan" },
-        progressLabel: null,
+
         proposalCount: 0,
         proposalCounts: { quarantine: 0, move_to_year: 0 },
         query: "",
@@ -172,7 +172,7 @@ describe("DashboardSurface", () => {
         onUndoTarget: () => {},
         ping: true,
         primaryAction: { stage: "build", label: "Build Plan" },
-        progressLabel: null,
+
         proposalCount: 0,
         proposalCounts: { quarantine: 0, move_to_year: 0 },
         query: "",
@@ -222,7 +222,7 @@ describe("DashboardSurface", () => {
         onUndoTarget: () => {},
         ping: true,
         primaryAction: { stage: "select", label: "Select Archive" },
-        progressLabel: null,
+
         proposalCount: 0,
         proposalCounts: { quarantine: 0, move_to_year: 0 },
         query: "",
@@ -275,7 +275,7 @@ describe("DashboardSurface", () => {
         onUndoTarget: () => {},
         ping: true,
         primaryAction: { stage: "select", label: "Select Archive" },
-        progressLabel: null,
+
         proposalCount: 0,
         proposalCounts: { quarantine: 0, move_to_year: 0 },
         query: "",

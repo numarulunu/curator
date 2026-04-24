@@ -60,7 +60,6 @@ export interface DashboardSurfaceProps {
   onUndoTarget: (row: Session) => void;
   ping: boolean | null;
   primaryAction: PrimaryActionState;
-  progressLabel: string | null;
   proposalCount: number;
   proposalCounts: { quarantine: number; move_to_year: number };
   query: string;
@@ -102,7 +101,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
         ? emptyAnalysisHeadline
         : `${formatNumber(props.counts.total)} finding${props.counts.total === 1 ? "" : "s"} ready for review.`;
 
-  const queueDetail = props.progressLabel ?? (props.isAnalyzed && props.counts.total === 0 ? emptyAnalysisDetail : stageText[props.primaryAction.stage]);
+  const queueDetail = props.isAnalyzed && props.counts.total === 0 ? emptyAnalysisDetail : stageText[props.primaryAction.stage];
   const latestSession = props.recentSessions[0] ?? null;
   const selectedCount = props.filteredRows.length;
   const wasteMetric = props.duplicateWaste > 0 ? compactMetric(props.duplicateWaste) : { value: "0", suffix: "B" };

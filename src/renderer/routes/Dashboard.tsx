@@ -144,6 +144,7 @@ export function Dashboard(): JSX.Element {
           message: `${analysisResult.scanned} files scanned`,
         });
       }
+      setResult({ scanned: analysisResult.scanned, root: archiveRoot });
       setIsAnalyzed(true);
       await loadFindings();
     } catch (err) {
@@ -264,13 +265,6 @@ export function Dashboard(): JSX.Element {
     [archiveRoot, isAnalyzed, proposals],
   );
 
-  const progressLabel = useMemo(() => {
-    if (!event) return null;
-    if (event.kind === "scan.progress" && typeof event.scanned === "number") return `Scanning ${event.scanned} files`;
-    if (event.kind === "hash.progress" && typeof event.hashed === "number" && typeof event.total === "number") return `Hashing ${event.hashed} / ${event.total}`;
-    return null;
-  }, [event]);
-
   const recentSessions = useMemo(
     () => [...sessions].sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()).slice(0, 5),
     [sessions],
@@ -315,7 +309,6 @@ export function Dashboard(): JSX.Element {
         onUndoTarget={setUndoTarget}
         ping={ping}
         primaryAction={primaryAction}
-        progressLabel={progressLabel}
         proposalCount={proposals?.length ?? 0}
         proposalCounts={proposalCounts}
         query={query}
