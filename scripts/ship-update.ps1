@@ -40,6 +40,11 @@ try {
     gh auth status | Out-Null
   }
 
+  Invoke-Step "Rebuilding the Python sidecar." {
+    & pnpm run build:sidecar
+    if ($LASTEXITCODE -ne 0) { throw "Sidecar build failed." }
+  }
+
   Invoke-Step "Rebuilding Electron native modules." {
     & pnpm run rebuild:electron
     if ($LASTEXITCODE -ne 0) { throw "Electron rebuild failed." }
