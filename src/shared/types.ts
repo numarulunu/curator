@@ -104,6 +104,51 @@ export interface CuratorApi {
   setClusterWinner: (clusterId: number, fileId: number) => Promise<void>;
   applyCluster: (clusterId: number, archiveRoot: string) => Promise<ApplyResult>;
   onEvent: (listener: (params: { kind: string; [k: string]: unknown }) => void) => () => void;
+  getAnalysisSettings: () => Promise<AnalysisSettings>;
+  saveAnalysisSettings: (settings: AnalysisSettings) => Promise<void>;
+  detectHardware: () => Promise<HardwareProfile>;
+  runAnalysis: (archiveRoot: string) => Promise<AnalysisResult>;
+  cancelAnalysis: () => Promise<void>;
+}
+
+export type AiMode = "off" | "lite" | "full";
+export type PresetName = "safe" | "balanced" | "aggressive" | "custom";
+export type ProfileName = "eco" | "balanced" | "max" | "custom";
+
+export interface AnalysisSettings {
+  similar_photo_review: boolean;
+  ai_mode: AiMode;
+  preset: PresetName;
+  preset_custom: Record<string, number>;
+  profile: ProfileName;
+  profile_custom: Record<string, number | string>;
+}
+
+export interface HardwareProfile {
+  cpu_count: number;
+  memory_mb: number;
+  providers: string[];
+  directml_available: boolean;
+}
+
+export type AnalysisPhase =
+  | "scan" | "hash" | "dates" | "proposals"
+  | "features" | "cluster" | "grade" | "done";
+
+export interface AnalysisProgress {
+  phase: AnalysisPhase;
+  processed?: number;
+  total?: number;
+  note?: string;
+}
+
+export interface AnalysisResult {
+  scanned: number;
+  hashed: number;
+  proposals: number;
+  clusters_created: number;
+  features_processed: number;
+  cancelled: boolean;
 }
 
 declare global {

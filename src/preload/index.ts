@@ -24,6 +24,11 @@ const api: CuratorApi = {
   listClusters: (root: string | null) => ipcRenderer.invoke("curator:listClusters", root),
   setClusterWinner: (clusterId: number, fileId: number) => ipcRenderer.invoke("curator:setClusterWinner", clusterId, fileId),
   applyCluster: (clusterId: number, archiveRoot: string) => ipcRenderer.invoke("curator:applyCluster", clusterId, archiveRoot),
+  getAnalysisSettings: () => ipcRenderer.invoke("curator:getAnalysisSettings"),
+  saveAnalysisSettings: (settings) => ipcRenderer.invoke("curator:saveAnalysisSettings", settings),
+  detectHardware: () => ipcRenderer.invoke("curator:detectHardware"),
+  runAnalysis: (archiveRoot: string) => ipcRenderer.invoke("curator:runAnalysis", archiveRoot),
+  cancelAnalysis: () => ipcRenderer.invoke("curator:cancelAnalysis"),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);
