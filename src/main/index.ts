@@ -15,6 +15,7 @@ import type {
   ZeroByteFile,
 } from "@shared/types";
 import { applyProposals, retrySession } from "./apply";
+import { applyCluster, listClusters, setClusterWinner } from "./clusters";
 import { undoSession } from "./undo";
 import { openDb, runMigrations } from "./db";
 import { reconcileInterruptedSessions } from "./reconcile";
@@ -27,6 +28,7 @@ import {
   type SessionRow,
 } from "./queries";
 import { Sidecar } from "./sidecar";
+import { runSmartDistillation } from "./smart";
 import { createUpdaterLogger, startAutoUpdater } from "./updater";
 
 let sidecar: Sidecar | null = null;
@@ -194,6 +196,24 @@ ipcMain.handle("curator:undoSession", async (_event, id: string) => {
 ipcMain.handle("curator:retrySession", async (_event, id: string) => {
   await ensureBackendReady();
   return retrySession(db!, sidecar!, id);
+});
+ipcMain.handle("curator:smartDistill", async (_event, root: string) => {
+  await ensureBackendReady();
+  return runSmartDistillation(sidecar!, root, {
+    onProgress: (p) => mainWindow?.webContents.send("curator:event", { kind: "smart-progress", ...p }),
+  });
+});
+ipcMain.handle("curator:listClusters", async (_event, root: string | null) => {
+  await ensureBackendReady();
+  return listClusters(sidecar!, root);
+});
+ipcMain.handle("curator:setClusterWinner", async (_event, clusterId: number, fileId: number) => {
+  await ensureBackendReady();
+  return setClusterWinner(sidecar!, clusterId, fileId);
+});
+ipcMain.handle("curator:applyCluster", async (_event, clusterId: number, archiveRoot: string) => {
+  await ensureBackendReady();
+  return applyCluster(sidecar!, clusterId, archiveRoot);
 });
 
 app.whenReady().then(async () => {

@@ -41,6 +41,45 @@ export interface Session {
   pending_count: number;
 }
 
+export interface ScoreBreakdown {
+  sharpness: number;
+  resolution: number;
+  face_quality: number;
+  nima_score: number;
+  exposure: number;
+  bytes_per_pixel: number;
+}
+
+export interface ClusterMember {
+  file_id: number;
+  path: string;
+  size: number;
+  score: number;
+  breakdown: ScoreBreakdown;
+  width: number | null;
+  height: number | null;
+}
+
+export interface Cluster {
+  id: number;
+  method: "phash" | "clip";
+  confidence: number;
+  applied_session_id: string | null;
+  winner: ClusterMember | null;
+  losers: ClusterMember[];
+}
+
+export interface ClusterListing {
+  clusters: Cluster[];
+}
+
+export interface SmartDistillResult {
+  clusters_created: number;
+  files_clustered: number;
+  clusters_graded: number;
+  features_processed: number;
+}
+
 export interface CuratorApi {
   getVersion: () => Promise<AppVersion>;
   getSidecarVersion: () => Promise<SidecarVersion>;
@@ -60,6 +99,10 @@ export interface CuratorApi {
   listSessions: () => Promise<Session[]>;
   undoSession: (id: string) => Promise<{ restored: number; failed: number; errors?: ApplyError[]; session_id: string }>;
   retrySession: (sessionId: string) => Promise<ApplyResult>;
+  smartDistill: (root: string) => Promise<SmartDistillResult>;
+  listClusters: (root: string | null) => Promise<ClusterListing>;
+  setClusterWinner: (clusterId: number, fileId: number) => Promise<void>;
+  applyCluster: (clusterId: number, archiveRoot: string) => Promise<ApplyResult>;
   onEvent: (listener: (params: { kind: string; [k: string]: unknown }) => void) => () => void;
 }
 

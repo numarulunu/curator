@@ -20,6 +20,10 @@ const api: CuratorApi = {
   listSessions: () => ipcRenderer.invoke("curator:listSessions"),
   undoSession: (id: string) => ipcRenderer.invoke("curator:undoSession", id),
   retrySession: (sessionId: string) => ipcRenderer.invoke("curator:retrySession", sessionId),
+  smartDistill: (root: string) => ipcRenderer.invoke("curator:smartDistill", root),
+  listClusters: (root: string | null) => ipcRenderer.invoke("curator:listClusters", root),
+  setClusterWinner: (clusterId: number, fileId: number) => ipcRenderer.invoke("curator:setClusterWinner", clusterId, fileId),
+  applyCluster: (clusterId: number, archiveRoot: string) => ipcRenderer.invoke("curator:applyCluster", clusterId, archiveRoot),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);
