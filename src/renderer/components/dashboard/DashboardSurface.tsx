@@ -79,6 +79,9 @@ export interface DashboardSurfaceProps {
   applyEtaSeconds?: number;
   archiveFileCount?: number | null;
   aiModeLabel?: string;
+  analysisProgress?: import("@shared/types").AnalysisProgress | null;
+  analysisRunning?: boolean;
+  onAnalysisCancel?: () => void;
 }
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
@@ -112,6 +115,32 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const selectedCount = props.filteredRows.length;
   const wasteMetric = props.duplicateWaste > 0 ? compactMetric(props.duplicateWaste) : { value: "0", suffix: "B" };
   const indexedCount = props.archiveFileCount ?? props.result?.scanned ?? 0;
+  const PHASE_LABELS: Record<string, string> = {
+    scan: "Scanning files",
+    hash: "Hashing",
+    dates: "Resolving dates",
+    features: "Analyzing features",
+    cluster: "Grouping photos",
+    grade: "Picking best shots",
+    done: "Done",
+  };
+  const progressPhaseLabel = props.analysisProgress
+    ? PHASE_LABELS[props.analysisProgress.phase] ?? props.analysisProgress.phase
+    : "Working";
+  const progressCountText = props.analysisProgress?.processed !== undefined
+    ? props.analysisProgress.total
+      ? `${props.analysisProgress.processed.toLocaleString()} / ${props.analysisProgress.total.toLocaleString()}`
+      : props.analysisProgress.processed.toLocaleString()
+    : null;
+  const liveBarPct = props.analysisRunning && props.analysisProgress?.processed !== undefined && props.analysisProgress.total
+    ? Math.min(100, (props.analysisProgress.processed / props.analysisProgress.total) * 100)
+    : 42;
+  const progressHeadline = props.analysisProgress?.note
+    ? props.analysisProgress.note
+    : `${progressPhaseLabel}${progressCountText ? ` — ${progressCountText}` : ""}`;
+  const progressDetail = props.analysisProgress?.note
+    ? `${progressPhaseLabel}`
+    : "Press Cancel to stop";
   const totalEtaText = (props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0) > 0
     ? formatEta((props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0))
     : null;
@@ -372,12 +401,35 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
       <div style={{ display: "flex", flexDirection: "column", background: "var(--surface-1)", position: "relative" }}>
         {props.footerBusy ? (
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "var(--border)", zIndex: 2 }}>
-            <div style={{ width: "42%", height: "100%", background: props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)", transition: "width 200ms linear" }} />
+            <div style={{ width: `${liveBarPct}%`, height: "100%", background: props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)", transition: "width 200ms linear" }} />
           </div>
         ) : null}
 
-        <div style={{ display: "grid", gridTemplateColumns: props.onReanalyze ? "92px 168px minmax(0, 1fr)" : "168px minmax(0, 1fr)" }}>
-          {props.onReanalyze && (
+        <div style={{ display: "grid", gridTemplateColumns: (props.analysisRunning || props.onReanalyze) ? "92px 168px minmax(0, 1fr)" : "168px minmax(0, 1fr)" }}>
+          {props.analysisRunning ? (
+            <button
+              type="button"
+              onClick={() => props.onAnalysisCancel?.()}
+              title="Cancel running analysis"
+              style={{
+                minHeight: 56,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 600,
+                border: "none",
+                borderRight: "1px solid var(--border)",
+                color: "var(--error)",
+                background: "var(--surface-2)",
+                cursor: "pointer",
+                transition: "all var(--t)",
+              }}
+            >
+              Cancel
+            </button>
+          ) : props.onReanalyze ? (
             <button
               type="button"
               onClick={() => props.onReanalyze!()}
@@ -401,7 +453,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
             >
               {props.reanalyzing ? "..." : "Re-analyze"}
             </button>
-          )}
+          ) : null}
           <button
             type="button"
             onClick={() => void props.onPrimaryAction()}
@@ -411,30 +463,47 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 8,
+              gap: 4,
               fontSize: 13,
               fontWeight: 600,
               border: "none",
               borderRight: "1px solid var(--border)",
-              color: props.footerBusy ? "var(--text-dim)" : props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a",
+              color: props.footerBusy ? "var(--text)" : props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a",
               background: props.footerBusy ? "var(--surface-2)" : props.primaryAction.stage === "apply" ? "var(--error)" : "var(--accent)",
               boxShadow: props.primaryAction.stage === "apply" && !props.footerBusy ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : "none",
               transition: "all var(--t)",
+              flexDirection: "column",
+              padding: "4px 6px",
             }}
           >
-            <span>{props.footerBusy ? "Working..." : props.primaryAction.label}</span>
-            {!props.footerBusy ? <ArrowRightIcon color={props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a"} /> : null}
+            {props.analysisRunning && props.analysisProgress ? (
+              <>
+                <span style={{ fontSize: 11, fontWeight: 600 }}>{progressPhaseLabel}</span>
+                {progressCountText ? (
+                  <span style={{ fontSize: 10, fontFamily: "var(--font-mono, monospace)", color: "var(--text-muted)" }}>{progressCountText}</span>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <span>{props.footerBusy ? "Working..." : props.primaryAction.label}</span>
+                {!props.footerBusy ? <ArrowRightIcon color={props.primaryAction.stage === "apply" ? "#fff" : "#0a0a0a"} /> : null}
+              </>
+            )}
           </button>
 
           <div style={{ minWidth: 0, padding: "0 16px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
-            <div className="num" style={{ fontSize: 12, color: props.error ? "var(--error)" : "var(--text)" }}>{props.error ?? queueHeadline}</div>
+            <div className="num" style={{ fontSize: 12, color: props.error ? "var(--error)" : "var(--text)" }}>
+              {props.error ?? (props.analysisRunning ? progressHeadline : queueHeadline)}
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ minWidth: 0, fontSize: 10, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{queueDetail}</div>
-              {latestSession ? (
+              <div style={{ minWidth: 0, fontSize: 10, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {props.analysisRunning ? progressDetail : queueDetail}
+              </div>
+              {!props.analysisRunning && latestSession ? (
                 <button type="button" onClick={() => props.onUndoTarget(latestSession)} disabled={props.footerBusy || props.undoingId !== null} style={textLinkStyle(props.footerBusy || props.undoingId !== null)}>
                   Undo last session
                 </button>
-              ) : props.isAnalyzed ? (
+              ) : !props.analysisRunning && props.isAnalyzed ? (
                 <button type="button" onClick={() => void props.loadFindings()} disabled={props.footerBusy || props.refreshing} style={textLinkStyle(props.footerBusy || props.refreshing)}>
                   Refresh findings
                 </button>

@@ -12,7 +12,6 @@ import type {
   SidecarVersion,
   ZeroByteFile,
 } from "@shared/types";
-import { AnalysisProgressBar } from "../components/AnalysisProgressBar";
 import { AnalysisSettingsPanel } from "../components/AnalysisSettingsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ModelDownloadBanner } from "../components/ModelDownloadBanner";
@@ -358,21 +357,15 @@ export function Dashboard(): JSX.Element {
         undoingId={undoingId}
         retryingId={retryingId}
         analysisSlot={
-          <>
-            <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
-            {running && (
-              <AnalysisProgressBar
-                progress={analysisProgress}
-                running={running}
-                onCancel={() => { void window.curator.cancelAnalysis(); }}
-              />
-            )}
-          </>
+          <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
         }
         analysisEtaSeconds={analysisEtaSeconds}
         applyEtaSeconds={applyEtaSeconds}
         archiveFileCount={archiveFileCount}
         aiModeLabel={settings.ai_mode === "off" ? "exact-only" : settings.ai_mode === "lite" ? "Lite AI" : "Full AI"}
+        analysisProgress={analysisProgress}
+        analysisRunning={running}
+        onAnalysisCancel={() => { void window.curator.cancelAnalysis(); }}
         onReanalyze={isAnalyzed ? () => void analyzeArchive() : undefined}
         reanalyzing={running}
       />
