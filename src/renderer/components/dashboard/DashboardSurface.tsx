@@ -62,14 +62,12 @@ export interface DashboardSurfaceProps {
   primaryAction: PrimaryActionState;
   proposalCount: number;
   proposalCounts: { quarantine: number; move_to_year: number };
-  query: string;
   recentSessions: Session[];
   refreshing: boolean;
   result: ScanResult | null;
   reviewRowCount: number;
   sessionsLoading: boolean;
   setFilter: (value: DashboardSurfaceFilter) => void;
-  setQuery: (value: string) => void;
   sidecar: SidecarVersion | null;
   undoingId: string | null;
   retryingId: string | null;
@@ -317,12 +315,6 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
                   active={props.filter}
                   onSelect={props.setFilter}
                 />
-              </Field>
-              <Field label="Search" helper="Filter by path or detail.">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, height: 50, padding: "0 14px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface-1)" }}>
-                  <SearchIcon />
-                  <input value={props.query} onChange={(event) => props.setQuery(event.target.value)} placeholder="Path or detail" style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--text)", background: "transparent", border: "none", outline: "none" }} />
-                </div>
               </Field>
             </RightSection>
 

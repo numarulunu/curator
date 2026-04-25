@@ -48,7 +48,6 @@ export function Dashboard(): JSX.Element {
   const [zeroByte, setZeroByte] = useState<ZeroByteFile[]>([]);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<DashboardSurfaceFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
@@ -88,7 +87,6 @@ export function Dashboard(): JSX.Element {
     setZeroByte([]);
     setProposals(null);
     setIsAnalyzed(false);
-    setQuery("");
     setFilter("all");
     setError(null);
   }, [archiveRoot]);
@@ -244,14 +242,10 @@ export function Dashboard(): JSX.Element {
 
   const reviewRows = useMemo(() => buildReviewRows(duplicates, misplaced, zeroByte), [duplicates, misplaced, zeroByte]);
 
-  const filteredRows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return reviewRows.filter((row) => {
-      if (filter !== "all" && row.kind !== filter) return false;
-      if (!needle) return true;
-      return [row.path, row.title, row.detail].some((value) => value.toLowerCase().includes(needle));
-    });
-  }, [filter, query, reviewRows]);
+  const filteredRows = useMemo(
+    () => (filter === "all" ? reviewRows : reviewRows.filter((row) => row.kind === filter)),
+    [filter, reviewRows],
+  );
 
   const counts = useMemo(
     () => ({
@@ -322,14 +316,12 @@ export function Dashboard(): JSX.Element {
         primaryAction={primaryAction}
         proposalCount={proposals?.length ?? 0}
         proposalCounts={proposalCounts}
-        query={query}
         recentSessions={recentSessions}
         refreshing={refreshing}
         result={result}
         reviewRowCount={reviewRows.length}
         sessionsLoading={sessionsLoading}
         setFilter={setFilter}
-        setQuery={setQuery}
         sidecar={sidecar}
         undoingId={undoingId}
         retryingId={retryingId}

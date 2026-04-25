@@ -42,6 +42,18 @@ const CUSTOM_FIELDS: Array<{ key: string; label: string; min: number; max: numbe
   { key: "min_confidence", label: "Minimum cluster confidence", min: 0.5, max: 1.0,  step: 0.01 },
 ];
 
+const PERF_NUMERIC_FIELDS: Array<{ key: string; label: string; min: number; max: number; step: number }> = [
+  { key: "workers",      label: "CPU worker threads",   min: 1,   max: 64,    step: 1   },
+  { key: "memory_mb",    label: "Memory cap (MB)",      min: 256, max: 32768, step: 256 },
+  { key: "decode_queue", label: "Decode queue depth",   min: 4,   max: 1024,  step: 4   },
+];
+
+const GPU_OPTIONS: Array<{ value: "off" | "auto" | "on"; label: string }> = [
+  { value: "off",  label: "Off"  },
+  { value: "auto", label: "Auto" },
+  { value: "on",   label: "On"   },
+];
+
 const fieldStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 8 };
 const fieldHeadStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 2 };
 const fieldLabelStyle: CSSProperties = { fontSize: 11, color: "var(--text)", fontWeight: 600 };
@@ -207,6 +219,55 @@ export function AnalysisSettingsPanel({ settings, onChange }: Props) {
             </button>
           ))}
         </div>
+
+        {settings.profile === "custom" && (
+          <div style={drawerStyle}>
+            <div style={customRowStyle}>
+              <span style={customLabelStyle}>GPU acceleration</span>
+              <div data-testid="custom-gpu" style={{ display: "inline-flex", gap: 4 }}>
+                {GPU_OPTIONS.map((opt) => {
+                  const active = (settings.profile_custom.gpu ?? "auto") === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      data-testid={`custom-gpu-${opt.value}`}
+                      aria-pressed={active}
+                      onClick={() => update({
+                        profile: "custom",
+                        profile_custom: { ...settings.profile_custom, gpu: opt.value },
+                      })}
+                      style={segButtonStyle(active)}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {PERF_NUMERIC_FIELDS.map((f) => (
+              <div key={f.key} style={customRowStyle}>
+                <span style={customLabelStyle} title={f.label}>{f.label}</span>
+                <input
+                  type="number"
+                  data-testid={`custom-${f.key}`}
+                  min={f.min}
+                  max={f.max}
+                  step={f.step}
+                  value={settings.profile_custom[f.key] ?? ""}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    update({
+                      profile: "custom",
+                      profile_custom: { ...settings.profile_custom, [f.key]: n },
+                    });
+                  }}
+                  style={customInputStyle}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </Field>
     </>
   );
