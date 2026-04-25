@@ -73,6 +73,7 @@ export interface DashboardSurfaceProps {
   sidecar: SidecarVersion | null;
   undoingId: string | null;
   retryingId: string | null;
+  analysisSlot?: ReactNode;
 }
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
@@ -305,7 +306,11 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-            <RightSection title="Analyze">
+            {props.analysisSlot ? (
+              <RightSection title="Analysis">{props.analysisSlot}</RightSection>
+            ) : null}
+
+            <RightSection title="Filter">
               <Field label="Scope" helper="Choose which findings stay in focus.">
                 <SegmentedControl
                   options={Object.entries(filterLabels).map(([value, label]) => ({ value: value as DashboardSurfaceFilter, label }))}

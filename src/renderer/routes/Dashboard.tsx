@@ -291,14 +291,6 @@ export function Dashboard(): JSX.Element {
   return (
     <>
       <ModelDownloadBanner />
-      {settings !== null && (
-        <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
-      )}
-      <AnalysisProgressBar
-        progress={running ? analysisProgress : null}
-        running={running}
-        onCancel={() => { void window.curator.cancelAnalysis(); }}
-      />
 
       <DashboardSurface
         app={app}
@@ -332,6 +324,20 @@ export function Dashboard(): JSX.Element {
         sidecar={sidecar}
         undoingId={undoingId}
         retryingId={retryingId}
+        analysisSlot={
+          settings !== null ? (
+            <>
+              <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
+              {running && (
+                <AnalysisProgressBar
+                  progress={analysisProgress}
+                  running={running}
+                  onCancel={() => { void window.curator.cancelAnalysis(); }}
+                />
+              )}
+            </>
+          ) : null
+        }
       />
 
       <ConfirmDialog
