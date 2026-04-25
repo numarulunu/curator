@@ -15,9 +15,9 @@ const PRESET_LABEL: Record<PresetName, string> = { safe: "Safe", balanced: "Bala
 const PROFILE_LABEL: Record<ProfileName, string> = { eco: "Eco", balanced: "Balanced", max: "Max", custom: "Custom" };
 
 const MODE_HELPER: Record<AiMode, string> = {
-  off: "Skip AI; only exact-byte duplicate detection runs.",
-  lite: "Run perceptual hash + visual similarity. Skips face and aesthetic models.",
-  full: "All models: similarity, faces, aesthetic grading. Heaviest, best results.",
+  off: "Only finds byte-identical copies — the same file saved twice.",
+  lite: "Also catches resized, recompressed, and slightly edited copies of the same photo.",
+  full: "Also picks the best shot from bursts and similar scenes using face detection and aesthetic scoring.",
 };
 
 const PRESET_HELPER: Record<PresetName, string> = {
@@ -46,49 +46,6 @@ const fieldStyle: CSSProperties = { display: "flex", flexDirection: "column", ga
 const fieldHeadStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 2 };
 const fieldLabelStyle: CSSProperties = { fontSize: 11, color: "var(--text)", fontWeight: 600 };
 const fieldHelperStyle: CSSProperties = { fontSize: 10, color: "var(--text-dim)", lineHeight: 1.5 };
-
-const toggleRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  minHeight: 50,
-  padding: "0 14px",
-  borderRadius: 6,
-  border: "1px solid var(--border)",
-  background: "var(--surface-1)",
-};
-
-const toggleLabelStyle: CSSProperties = {
-  fontSize: 12,
-  color: "var(--text)",
-  cursor: "pointer",
-  userSelect: "none",
-  flex: 1,
-};
-
-const switchTrackStyle = (on: boolean): CSSProperties => ({
-  width: 36,
-  height: 20,
-  borderRadius: 10,
-  background: on ? "var(--accent)" : "var(--surface-3)",
-  border: "1px solid var(--border-strong)",
-  position: "relative",
-  cursor: "pointer",
-  transition: "background var(--t)",
-  flexShrink: 0,
-});
-
-const switchKnobStyle = (on: boolean): CSSProperties => ({
-  position: "absolute",
-  top: 1,
-  left: on ? 17 : 1,
-  width: 16,
-  height: 16,
-  borderRadius: "50%",
-  background: on ? "#0a0a0a" : "var(--text-muted)",
-  transition: "left var(--t), background var(--t)",
-});
 
 const segGridStyle = (count: number): CSSProperties => ({
   display: "grid",
@@ -164,61 +121,33 @@ function Field({ label, helper, children }: { label: string; helper: string; chi
 
 export function AnalysisSettingsPanel({ settings, onChange }: Props) {
   const update = (patch: Partial<AnalysisSettings>) => onChange({ ...settings, ...patch });
-  const showAi = settings.similar_photo_review;
-  const showCustom = showAi && settings.preset === "custom";
-  const toggleId = "similar-photo-toggle-input";
+  const aiOn = settings.ai_mode !== "off";
+  const showCustom = aiOn && settings.preset === "custom";
+
+  function setMode(m: AiMode) {
+    update({ ai_mode: m, similar_photo_review: m !== "off" });
+  }
 
   return (
     <>
-      <Field
-        label="Similar photo review"
-        helper={
-          showAi
-            ? `${MODE_LABEL[settings.ai_mode]} mode — ${MODE_HELPER[settings.ai_mode]}`
-            : "Off — only exact-byte duplicates are found. Turn on to also catch near-duplicates."
-        }
-      >
-        <div
-          style={toggleRowStyle}
-          onClick={() => update({ similar_photo_review: !settings.similar_photo_review })}
-        >
-          <label htmlFor={toggleId} style={toggleLabelStyle}>
-            {showAi ? "Enabled" : "Disabled"}
-          </label>
-          <input
-            id={toggleId}
-            type="checkbox"
-            data-testid="similar-photo-toggle"
-            checked={settings.similar_photo_review}
-            onChange={(e) => update({ similar_photo_review: e.target.checked })}
-            style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
-          />
-          <div style={switchTrackStyle(showAi)} aria-hidden>
-            <div style={switchKnobStyle(showAi)} />
-          </div>
+      <Field label="Duplicate detection" helper={MODE_HELPER[settings.ai_mode]}>
+        <div data-testid="ai-mode" style={segGridStyle(MODES.length)}>
+          {MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              data-testid={`ai-mode-${m}`}
+              aria-pressed={settings.ai_mode === m}
+              onClick={() => setMode(m)}
+              style={segButtonStyle(settings.ai_mode === m)}
+            >
+              {MODE_LABEL[m]}
+            </button>
+          ))}
         </div>
       </Field>
 
-      {showAi && (
-        <Field label="AI mode" helper={MODE_HELPER[settings.ai_mode]}>
-          <div data-testid="ai-mode" style={segGridStyle(MODES.length)}>
-            {MODES.map((m) => (
-              <button
-                key={m}
-                type="button"
-                data-testid={`ai-mode-${m}`}
-                aria-pressed={settings.ai_mode === m}
-                onClick={() => update({ ai_mode: m })}
-                style={segButtonStyle(settings.ai_mode === m)}
-              >
-                {MODE_LABEL[m]}
-              </button>
-            ))}
-          </div>
-        </Field>
-      )}
-
-      {showAi && (
+      {aiOn && (
         <Field label="Strictness" helper={PRESET_HELPER[settings.preset]}>
           <div data-testid="preset" style={segGridStyle(PRESETS.length)}>
             {PRESETS.map((p) => (

@@ -1,6 +1,6 @@
 {
   "name": "curator",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "Archive Curator — dedup + reorg tool",
   "main": "./out/main/index.js",
   "scripts": {
