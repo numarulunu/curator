@@ -25,6 +25,13 @@ export function estimateAnalysisSeconds(
   return fileCount * perFile * PROFILE_MULTIPLIER[profile];
 }
 
+const APPLY_PER_PROPOSAL_S = 0.05;
+
+export function estimateApplySeconds(proposalCount: number): number {
+  if (proposalCount <= 0) return 0;
+  return proposalCount * APPLY_PER_PROPOSAL_S;
+}
+
 export function formatEta(seconds: number): string {
   if (seconds <= 0) return "—";
   if (seconds < 60) return `~${Math.round(seconds)}s`;

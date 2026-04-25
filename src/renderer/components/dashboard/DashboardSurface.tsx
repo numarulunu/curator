@@ -4,6 +4,7 @@ import type { AppVersion, ScanResult, Session, SidecarVersion } from "@shared/ty
 import type { PrimaryActionState, ReviewRow } from "../../lib/dashboard";
 import { sessionStatus } from "../../lib/curatorUi";
 import { formatDateTime, formatDuration, formatNumber, shortHash } from "../../lib/format";
+import { formatEta } from "../../lib/eta";
 
 export type DashboardSurfaceFilter = "all" | "duplicate" | "misplaced" | "zero-byte";
 
@@ -74,6 +75,10 @@ export interface DashboardSurfaceProps {
   analysisSlot?: ReactNode;
   onReanalyze?: () => void;
   reanalyzing?: boolean;
+  analysisEtaSeconds?: number;
+  applyEtaSeconds?: number;
+  archiveFileCount?: number | null;
+  aiModeLabel?: string;
 }
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
@@ -106,12 +111,37 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const latestSession = props.recentSessions[0] ?? null;
   const selectedCount = props.filteredRows.length;
   const wasteMetric = props.duplicateWaste > 0 ? compactMetric(props.duplicateWaste) : { value: "0", suffix: "B" };
+  const indexedCount = props.archiveFileCount ?? props.result?.scanned ?? 0;
+  const analysisEtaText = props.analysisEtaSeconds && props.analysisEtaSeconds > 0
+    ? formatEta(props.analysisEtaSeconds)
+    : null;
+  const applyEtaText = props.applyEtaSeconds && props.applyEtaSeconds > 0
+    ? formatEta(props.applyEtaSeconds)
+    : null;
+  const totalEtaText = (props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0) > 0
+    ? formatEta((props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0))
+    : null;
+
+  const findingsDetail = indexedCount > 0
+    ? analysisEtaText
+      ? `${formatNumber(indexedCount)} indexed · Est. ${analysisEtaText} to ${props.isAnalyzed ? "re-analyze" : "analyze"}${props.aiModeLabel ? ` (${props.aiModeLabel})` : ""}`
+      : `${formatNumber(indexedCount)} indexed`
+    : "Awaiting analysis";
+
+  const planDetail = props.proposalCount > 0
+    ? applyEtaText
+      ? `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move · Est. ${applyEtaText} to apply`
+      : `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move`
+    : totalEtaText
+      ? `Nothing staged · Est. ${totalEtaText} for full run`
+      : "Nothing staged";
+
   const stats = [
     {
       label: "Findings",
       value: formatNumber(props.counts.total),
       suffix: null as string | null,
-      detail: props.result ? `${formatNumber(props.result.scanned)} indexed` : "Awaiting analysis",
+      detail: findingsDetail,
     },
     {
       label: "Waste",
@@ -123,7 +153,7 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
       label: "Plan",
       value: formatNumber(props.proposalCount),
       suffix: null as string | null,
-      detail: props.proposalCount > 0 ? `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move` : "Nothing staged",
+      detail: planDetail,
     },
   ];
 

@@ -16,7 +16,7 @@ import { AnalysisProgressBar } from "../components/AnalysisProgressBar";
 import { AnalysisSettingsPanel } from "../components/AnalysisSettingsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ModelDownloadBanner } from "../components/ModelDownloadBanner";
-import { estimateAnalysisSeconds, formatEta } from "../lib/eta";
+import { estimateAnalysisSeconds, estimateApplySeconds } from "../lib/eta";
 import { useCuratorEvents } from "../hooks/useCuratorEvents";
 import { buildReviewRows, resolvePrimaryAction } from "../lib/dashboard";
 import { countProposalActions, stripIpcPrefix } from "../lib/curatorUi";
@@ -296,6 +296,17 @@ export function Dashboard(): JSX.Element {
 
   const footerBusy = running || building || applying;
 
+  const analysisEtaSeconds = useMemo(
+    () => (archiveFileCount && archiveFileCount > 0
+      ? estimateAnalysisSeconds(archiveFileCount, settings.ai_mode, settings.profile)
+      : 0),
+    [archiveFileCount, settings.ai_mode, settings.profile],
+  );
+  const applyEtaSeconds = useMemo(
+    () => estimateApplySeconds(proposals?.length ?? 0),
+    [proposals],
+  );
+
   async function onPrimaryAction(): Promise<void> {
     if (primaryAction.stage === "select") {
       await pickArchive();
@@ -349,14 +360,6 @@ export function Dashboard(): JSX.Element {
         analysisSlot={
           <>
             <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
-            {archiveFileCount !== null && archiveFileCount > 0 && !running && (
-              <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                <div>{archiveFileCount.toLocaleString()} files indexed</div>
-                <div>
-                  Est. {formatEta(estimateAnalysisSeconds(archiveFileCount, settings.ai_mode, settings.profile))} for {settings.ai_mode === "off" ? "exact-only" : settings.ai_mode === "lite" ? "Lite AI" : "Full AI"} on {settings.profile}
-                </div>
-              </div>
-            )}
             {running && (
               <AnalysisProgressBar
                 progress={analysisProgress}
@@ -366,6 +369,10 @@ export function Dashboard(): JSX.Element {
             )}
           </>
         }
+        analysisEtaSeconds={analysisEtaSeconds}
+        applyEtaSeconds={applyEtaSeconds}
+        archiveFileCount={archiveFileCount}
+        aiModeLabel={settings.ai_mode === "off" ? "exact-only" : settings.ai_mode === "lite" ? "Lite AI" : "Full AI"}
         onReanalyze={isAnalyzed ? () => void analyzeArchive() : undefined}
         reanalyzing={running}
       />
