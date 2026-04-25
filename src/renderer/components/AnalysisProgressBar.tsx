@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { AnalysisProgress } from "@shared/types";
 
 interface Props {
@@ -65,23 +66,58 @@ const cancelStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function formatElapsed(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m < 60) return `${m}m ${sec}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
 export function AnalysisProgressBar({ progress, running, onCancel }: Props) {
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(Date.now());
+
+  useEffect(() => {
+    if (running && startedAt === null) setStartedAt(Date.now());
+    if (!running) setStartedAt(null);
+  }, [running, startedAt]);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+
   if (!progress) return null;
   const label = PHASE_LABEL[progress.phase] ?? progress.phase;
   const pct =
     progress.total && progress.processed !== undefined
       ? Math.min(100, Math.round((progress.processed / progress.total) * 100))
       : null;
+
+  const elapsedS = startedAt ? Math.floor((now - startedAt) / 1000) : 0;
+  let etaText = "";
+  if (running && pct !== null && pct > 0 && pct < 100 && elapsedS > 3) {
+    const totalEstS = (elapsedS / pct) * 100;
+    const remainingS = Math.max(0, totalEstS - elapsedS);
+    etaText = ` · ETA ${formatElapsed(Math.round(remainingS))}`;
+  }
+
   return (
     <div style={wrapStyle} aria-label="Analysis progress">
       <div style={lineStyle}>
         <span>{label}</span>
-        {progress.processed !== undefined && (
-          <span style={countStyle}>
-            {progress.processed}
-            {progress.total ? ` / ${progress.total}` : ""}
-          </span>
-        )}
+        <span style={countStyle}>
+          {progress.processed !== undefined ? (
+            <>
+              {progress.processed.toLocaleString()}
+              {progress.total ? ` / ${progress.total.toLocaleString()}` : ""}
+            </>
+          ) : null}
+          {running ? ` · ${formatElapsed(elapsedS)}${etaText}` : ""}
+        </span>
       </div>
       {pct !== null && (
         <div style={trackStyle}>

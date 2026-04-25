@@ -103,6 +103,7 @@ export interface CuratorApi {
   cancelAnalysis: () => Promise<void>;
   getAppPrefs: () => Promise<{ archiveRoot: string | null; outputRoot: string | null }>;
   saveAppPrefs: (prefs: { archiveRoot: string | null; outputRoot: string | null }) => Promise<void>;
+  getArchiveFileCount: (root: string) => Promise<number>;
 }
 
 export type AiMode = "off" | "lite" | "full";

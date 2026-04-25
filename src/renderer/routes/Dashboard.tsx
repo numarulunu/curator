@@ -16,6 +16,7 @@ import { AnalysisProgressBar } from "../components/AnalysisProgressBar";
 import { AnalysisSettingsPanel } from "../components/AnalysisSettingsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ModelDownloadBanner } from "../components/ModelDownloadBanner";
+import { estimateAnalysisSeconds, formatEta } from "../lib/eta";
 import { useCuratorEvents } from "../hooks/useCuratorEvents";
 import { buildReviewRows, resolvePrimaryAction } from "../lib/dashboard";
 import { countProposalActions, stripIpcPrefix } from "../lib/curatorUi";
@@ -62,6 +63,7 @@ export function Dashboard(): JSX.Element {
   const [undoTarget, setUndoTarget] = useState<Session | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [archiveFileCount, setArchiveFileCount] = useState<number | null>(null);
 
   useEffect(() => {
     window.curator.getVersion().then(setApp).catch(() => setApp(null));
@@ -72,13 +74,32 @@ export function Dashboard(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (!event || event.kind !== "analysis-progress") return;
-    const phase = event.phase as AnalysisProgress["phase"];
-    const processed = typeof event.processed === "number" ? event.processed : undefined;
-    const total = typeof event.total === "number" ? event.total : undefined;
-    const note = typeof event.note === "string" ? event.note : undefined;
-    setAnalysisProgress({ phase, processed, total, note });
+    if (!event) return;
+    if (event.kind === "analysis-progress") {
+      const phase = event.phase as AnalysisProgress["phase"];
+      const processed = typeof event.processed === "number" ? event.processed : undefined;
+      const total = typeof event.total === "number" ? event.total : undefined;
+      const note = typeof event.note === "string" ? event.note : undefined;
+      setAnalysisProgress({ phase, processed, total, note });
+      return;
+    }
+    if (event.kind === "scan.progress") {
+      const scanned = typeof event.scanned === "number" ? event.scanned : undefined;
+      setAnalysisProgress({ phase: "scan", processed: scanned });
+      return;
+    }
+    if (event.kind === "hash.progress") {
+      const hashed = typeof event.hashed === "number" ? event.hashed : undefined;
+      const total = typeof event.total === "number" ? event.total : undefined;
+      setAnalysisProgress({ phase: "hash", processed: hashed, total });
+      return;
+    }
   }, [event]);
+
+  useEffect(() => {
+    if (!archiveRoot) { setArchiveFileCount(null); return; }
+    window.curator.getArchiveFileCount(archiveRoot).then(setArchiveFileCount).catch(() => setArchiveFileCount(null));
+  }, [archiveRoot, isAnalyzed]);
 
   useEffect(() => {
     setResult(null);
@@ -328,6 +349,14 @@ export function Dashboard(): JSX.Element {
         analysisSlot={
           <>
             <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
+            {archiveFileCount !== null && archiveFileCount > 0 && !running && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                <div>{archiveFileCount.toLocaleString()} files indexed</div>
+                <div>
+                  Est. {formatEta(estimateAnalysisSeconds(archiveFileCount, settings.ai_mode, settings.profile))} for {settings.ai_mode === "off" ? "exact-only" : settings.ai_mode === "lite" ? "Lite AI" : "Full AI"} on {settings.profile}
+                </div>
+              </div>
+            )}
             {running && (
               <AnalysisProgressBar
                 progress={analysisProgress}

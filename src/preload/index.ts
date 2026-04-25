@@ -30,6 +30,7 @@ const api: CuratorApi = {
   cancelAnalysis: () => ipcRenderer.invoke("curator:cancelAnalysis"),
   getAppPrefs: () => ipcRenderer.invoke("curator:getAppPrefs"),
   saveAppPrefs: (prefs) => ipcRenderer.invoke("curator:saveAppPrefs", prefs),
+  getArchiveFileCount: (root: string) => ipcRenderer.invoke("curator:getArchiveFileCount", root),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);

@@ -235,6 +235,18 @@ ipcMain.handle("curator:getAppPrefs", async () => {
 ipcMain.handle("curator:saveAppPrefs", async (_evt, prefs: { archiveRoot: string | null; outputRoot: string | null }) => {
   writeFileSync(APP_PREFS_PATH, JSON.stringify(prefs, null, 2), "utf-8");
 });
+
+ipcMain.handle("curator:getArchiveFileCount", async (_evt, root: string) => {
+  await ensureBackendReady();
+  if (!db) return 0;
+  const normalized = root.replace(/[/\\]+$/, "");
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM files WHERE path = ? OR path LIKE ? OR path LIKE ?",
+    )
+    .get(normalized, `${normalized}/%`, `${normalized}\\%`) as { n: number };
+  return row?.n ?? 0;
+});
 ipcMain.handle("curator:runAnalysis", async (_evt, archiveRoot: string, settings: import("@shared/types").AnalysisSettings) => {
   await ensureBackendReady();
   return runAnalysis(sidecar!, archiveRoot, settings, {
