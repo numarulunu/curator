@@ -421,8 +421,8 @@ function ReviewQueueRow({ row, expanded, onToggle }: { row: ReviewRow; expanded:
 
 function PickerRow({ label, value, onPick, trailing, disabled }: { label: string; value: string | null; onPick: () => void; trailing?: ReactNode; disabled: boolean }): JSX.Element {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "68px minmax(0, 1fr) auto auto", alignItems: "center", gap: 8, minWidth: 0 }}>
-      <span style={{ width: 68, fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+    <div style={{ display: "grid", gridTemplateColumns: "44px minmax(0, 1fr) auto auto", alignItems: "center", gap: 8, minWidth: 0 }}>
+      <span style={{ width: 48, fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 8, height: 30, minWidth: 0, padding: "0 10px", background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: 4 }}>
         <FolderIcon />
         <span className="num" style={{ flex: 1, fontSize: 12, color: value ? "var(--text)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || "-"}</span>

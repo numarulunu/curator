@@ -328,6 +328,27 @@ export function Dashboard(): JSX.Element {
         analysisSlot={
           <>
             <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
+            {archiveRoot && (
+              <button
+                type="button"
+                onClick={() => void analyzeArchive()}
+                disabled={running}
+                style={{
+                  height: 32,
+                  padding: "0 14px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: running ? "var(--text-dim)" : "#0a0a0a",
+                  border: "none",
+                  borderRadius: 4,
+                  background: running ? "var(--surface-2)" : "var(--accent)",
+                  cursor: running ? "wait" : "pointer",
+                  transition: "all var(--t)",
+                }}
+              >
+                {running ? "Analyzing..." : isAnalyzed ? "Re-analyze with current settings" : "Run analysis"}
+              </button>
+            )}
             {running && (
               <AnalysisProgressBar
                 progress={analysisProgress}
