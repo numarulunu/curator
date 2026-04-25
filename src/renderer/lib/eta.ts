@@ -40,3 +40,12 @@ export function formatEta(seconds: number): string {
   if (hours < 10) return `~${hours.toFixed(1)}h`;
   return `~${Math.round(hours)}h`;
 }
+
+export function formatEtaParts(seconds: number): { value: string; suffix: string } {
+  if (seconds <= 0) return { value: "—", suffix: "" };
+  if (seconds < 60) return { value: String(Math.round(seconds)), suffix: "s" };
+  if (seconds < 3600) return { value: String(Math.round(seconds / 60)), suffix: "min" };
+  const hours = seconds / 3600;
+  if (hours < 10) return { value: hours.toFixed(1), suffix: "h" };
+  return { value: String(Math.round(hours)), suffix: "h" };
+}

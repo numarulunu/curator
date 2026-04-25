@@ -4,7 +4,7 @@ import type { AppVersion, ScanResult, Session, SidecarVersion } from "@shared/ty
 import type { PrimaryActionState, ReviewRow } from "../../lib/dashboard";
 import { sessionStatus } from "../../lib/curatorUi";
 import { formatDateTime, formatDuration, formatNumber, shortHash } from "../../lib/format";
-import { formatEta } from "../../lib/eta";
+import { formatEta, formatEtaParts } from "../../lib/eta";
 
 export type DashboardSurfaceFilter = "all" | "duplicate" | "misplaced" | "zero-byte";
 
@@ -112,51 +112,49 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const selectedCount = props.filteredRows.length;
   const wasteMetric = props.duplicateWaste > 0 ? compactMetric(props.duplicateWaste) : { value: "0", suffix: "B" };
   const indexedCount = props.archiveFileCount ?? props.result?.scanned ?? 0;
-  const analysisEtaText = props.analysisEtaSeconds && props.analysisEtaSeconds > 0
-    ? formatEta(props.analysisEtaSeconds)
-    : null;
-  const applyEtaText = props.applyEtaSeconds && props.applyEtaSeconds > 0
-    ? formatEta(props.applyEtaSeconds)
-    : null;
   const totalEtaText = (props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0) > 0
     ? formatEta((props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0))
     : null;
 
-  const findingsLine1 = indexedCount > 0 ? `${formatNumber(indexedCount)} indexed` : "Awaiting analysis";
-  const findingsLine2 = indexedCount > 0 && analysisEtaText
-    ? `Est. ${analysisEtaText} to ${props.isAnalyzed ? "re-analyze" : "analyze"}${props.aiModeLabel ? ` (${props.aiModeLabel})` : ""}`
-    : null;
+  const analysisEtaParts = formatEtaParts(props.analysisEtaSeconds || 0);
+  const applyEtaParts = formatEtaParts(props.applyEtaSeconds || 0);
 
-  const planLine1 = props.proposalCount > 0
-    ? `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move`
-    : "Nothing staged";
-  const planLine2 = props.proposalCount > 0 && applyEtaText
-    ? `Est. ${applyEtaText} to apply`
-    : props.proposalCount === 0 && totalEtaText
-      ? `Est. ${totalEtaText} full run`
-      : null;
+  const findingsValue = analysisEtaParts.value !== "—"
+    ? analysisEtaParts.value
+    : formatNumber(props.counts.total);
+  const findingsSuffix = analysisEtaParts.value !== "—" ? analysisEtaParts.suffix : null;
+  const findingsDetail = indexedCount > 0
+    ? `${formatNumber(indexedCount)} indexed · ${formatNumber(props.counts.total)} finding${props.counts.total === 1 ? "" : "s"}${props.aiModeLabel ? ` · ${props.aiModeLabel}` : ""}`
+    : "Awaiting analysis";
+
+  const planValue = applyEtaParts.value !== "—"
+    ? applyEtaParts.value
+    : formatNumber(props.proposalCount);
+  const planSuffix = applyEtaParts.value !== "—" ? applyEtaParts.suffix : null;
+  const planDetail = props.proposalCount > 0
+    ? `${formatNumber(props.proposalCount)} action${props.proposalCount === 1 ? "" : "s"} · ${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move`
+    : totalEtaText
+      ? `Nothing staged · full run ${totalEtaText}`
+      : "Nothing staged";
 
   const stats = [
     {
-      label: "Findings",
-      value: formatNumber(props.counts.total),
-      suffix: null as string | null,
-      detail: findingsLine1,
-      detail2: findingsLine2,
+      label: "Analyze",
+      value: findingsValue,
+      suffix: findingsSuffix,
+      detail: findingsDetail,
     },
     {
       label: "Waste",
       value: wasteMetric.value,
       suffix: wasteMetric.suffix,
       detail: props.counts.duplicate > 0 ? `${formatNumber(props.counts.duplicate)} exact-match cluster${props.counts.duplicate === 1 ? "" : "s"}` : "No duplicate waste yet",
-      detail2: null as string | null,
     },
     {
-      label: "Plan",
-      value: formatNumber(props.proposalCount),
-      suffix: null as string | null,
-      detail: planLine1,
-      detail2: planLine2,
+      label: "Apply",
+      value: planValue,
+      suffix: planSuffix,
+      detail: planDetail,
     },
   ];
 
@@ -318,9 +316,6 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
                       {stat.suffix ? <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>{stat.suffix}</span> : null}
                     </div>
                     <span className="num" style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.detail}</span>
-                    {stat.detail2 ? (
-                      <span className="num" style={{ fontSize: 10, color: "var(--accent)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.detail2}</span>
-                    ) : null}
                   </div>
                 ))}
               </div>
