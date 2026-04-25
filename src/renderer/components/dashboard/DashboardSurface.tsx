@@ -122,38 +122,41 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
     ? formatEta((props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0))
     : null;
 
-  const findingsDetail = indexedCount > 0
-    ? analysisEtaText
-      ? `${formatNumber(indexedCount)} indexed · Est. ${analysisEtaText} to ${props.isAnalyzed ? "re-analyze" : "analyze"}${props.aiModeLabel ? ` (${props.aiModeLabel})` : ""}`
-      : `${formatNumber(indexedCount)} indexed`
-    : "Awaiting analysis";
+  const findingsLine1 = indexedCount > 0 ? `${formatNumber(indexedCount)} indexed` : "Awaiting analysis";
+  const findingsLine2 = indexedCount > 0 && analysisEtaText
+    ? `Est. ${analysisEtaText} to ${props.isAnalyzed ? "re-analyze" : "analyze"}${props.aiModeLabel ? ` (${props.aiModeLabel})` : ""}`
+    : null;
 
-  const planDetail = props.proposalCount > 0
-    ? applyEtaText
-      ? `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move · Est. ${applyEtaText} to apply`
-      : `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move`
-    : totalEtaText
-      ? `Nothing staged · Est. ${totalEtaText} for full run`
-      : "Nothing staged";
+  const planLine1 = props.proposalCount > 0
+    ? `${formatNumber(props.proposalCounts.quarantine)} quarantine | ${formatNumber(props.proposalCounts.move_to_year)} move`
+    : "Nothing staged";
+  const planLine2 = props.proposalCount > 0 && applyEtaText
+    ? `Est. ${applyEtaText} to apply`
+    : props.proposalCount === 0 && totalEtaText
+      ? `Est. ${totalEtaText} full run`
+      : null;
 
   const stats = [
     {
       label: "Findings",
       value: formatNumber(props.counts.total),
       suffix: null as string | null,
-      detail: findingsDetail,
+      detail: findingsLine1,
+      detail2: findingsLine2,
     },
     {
       label: "Waste",
       value: wasteMetric.value,
       suffix: wasteMetric.suffix,
       detail: props.counts.duplicate > 0 ? `${formatNumber(props.counts.duplicate)} exact-match cluster${props.counts.duplicate === 1 ? "" : "s"}` : "No duplicate waste yet",
+      detail2: null as string | null,
     },
     {
       label: "Plan",
       value: formatNumber(props.proposalCount),
       suffix: null as string | null,
-      detail: planDetail,
+      detail: planLine1,
+      detail2: planLine2,
     },
   ];
 
@@ -315,6 +318,9 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
                       {stat.suffix ? <span className="num" style={{ fontSize: 11, color: "var(--text-dim)" }}>{stat.suffix}</span> : null}
                     </div>
                     <span className="num" style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.detail}</span>
+                    {stat.detail2 ? (
+                      <span className="num" style={{ fontSize: 10, color: "var(--accent)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stat.detail2}</span>
+                    ) : null}
                   </div>
                 ))}
               </div>
