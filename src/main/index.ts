@@ -1,6 +1,6 @@
 ﻿import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import type {
@@ -215,9 +215,29 @@ ipcMain.handle("curator:cancelAnalysis", async () => {
   await ensureBackendReady();
   await sidecar!.call("cancelAnalysis", {});
 });
-ipcMain.handle("curator:runAnalysis", async (_evt, archiveRoot: string) => {
+
+const APP_PREFS_PATH = join(resolveCuratorStateDir(), "app_prefs.json");
+
+ipcMain.handle("curator:getAppPrefs", async () => {
+  if (!existsSync(APP_PREFS_PATH)) return { archiveRoot: null, outputRoot: null };
+  try {
+    const raw = readFileSync(APP_PREFS_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    return {
+      archiveRoot: typeof parsed.archiveRoot === "string" ? parsed.archiveRoot : null,
+      outputRoot: typeof parsed.outputRoot === "string" ? parsed.outputRoot : null,
+    };
+  } catch {
+    return { archiveRoot: null, outputRoot: null };
+  }
+});
+
+ipcMain.handle("curator:saveAppPrefs", async (_evt, prefs: { archiveRoot: string | null; outputRoot: string | null }) => {
+  writeFileSync(APP_PREFS_PATH, JSON.stringify(prefs, null, 2), "utf-8");
+});
+ipcMain.handle("curator:runAnalysis", async (_evt, archiveRoot: string, settings: import("@shared/types").AnalysisSettings) => {
   await ensureBackendReady();
-  return runAnalysis(sidecar!, archiveRoot, {
+  return runAnalysis(sidecar!, archiveRoot, settings, {
     onProgress: (p) => mainWindow?.webContents.send("curator:event", { kind: "analysis-progress", ...p }),
   });
 });

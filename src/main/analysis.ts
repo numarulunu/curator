@@ -20,11 +20,11 @@ export function resolveThresholds(s: AnalysisSettings): Record<string, number> {
 export async function runAnalysis(
   sidecar: SidecarLike,
   archiveRoot: string,
+  settings: AnalysisSettings,
   opts: { onProgress?: (p: AnalysisProgress) => void; batchSize?: number } = {},
 ): Promise<AnalysisResult> {
   const emit = opts.onProgress ?? (() => {});
   const batchSize = opts.batchSize ?? 200;
-  const settings = await sidecar.call<AnalysisSettings>("getAnalysisSettings", {});
 
   emit({ phase: "scan" as AnalysisPhase });
   const scan = await sidecar.call<{ scanned: number; root: string }>("scan", { root: archiveRoot });

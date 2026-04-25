@@ -46,10 +46,25 @@ export function saveStoredArchivePrefs(prefs: ArchivePrefs): void {
 
 export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [prefs, setPrefs] = useState<ArchivePrefs>(loadStoredArchivePrefs);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (!window.curator?.getAppPrefs) { setHydrated(true); return; }
+    window.curator.getAppPrefs().then((stored) => {
+      if (stored && (stored.archiveRoot || stored.outputRoot)) {
+        setPrefs(stored);
+      }
+      setHydrated(true);
+    }).catch(() => setHydrated(true));
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
     saveStoredArchivePrefs(prefs);
-  }, [prefs]);
+    if (window.curator?.saveAppPrefs) {
+      void window.curator.saveAppPrefs(prefs);
+    }
+  }, [hydrated, prefs]);
 
   const setArchiveRoot = useCallback((root: string | null) => {
     setPrefs((current) => ({ ...current, archiveRoot: root }));

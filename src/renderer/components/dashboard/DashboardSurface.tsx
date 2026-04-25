@@ -72,6 +72,8 @@ export interface DashboardSurfaceProps {
   undoingId: string | null;
   retryingId: string | null;
   analysisSlot?: ReactNode;
+  onReanalyze?: () => void;
+  reanalyzing?: boolean;
 }
 
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
@@ -343,7 +345,32 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
           </div>
         ) : null}
 
-        <div style={{ display: "grid", gridTemplateColumns: "168px minmax(0, 1fr)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: props.onReanalyze ? "92px 168px minmax(0, 1fr)" : "168px minmax(0, 1fr)" }}>
+          {props.onReanalyze && (
+            <button
+              type="button"
+              onClick={() => props.onReanalyze!()}
+              disabled={props.footerBusy || props.reanalyzing}
+              title="Re-analyze with current settings"
+              style={{
+                minHeight: 56,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                border: "none",
+                borderRight: "1px solid var(--border)",
+                color: props.footerBusy || props.reanalyzing ? "var(--text-dim)" : "var(--text-muted)",
+                background: "var(--surface-2)",
+                cursor: props.footerBusy || props.reanalyzing ? "wait" : "pointer",
+                transition: "all var(--t)",
+              }}
+            >
+              {props.reanalyzing ? "..." : "Re-analyze"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void props.onPrimaryAction()}

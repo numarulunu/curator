@@ -26,8 +26,10 @@ const api: CuratorApi = {
   getAnalysisSettings: () => ipcRenderer.invoke("curator:getAnalysisSettings"),
   saveAnalysisSettings: (settings) => ipcRenderer.invoke("curator:saveAnalysisSettings", settings),
   detectHardware: () => ipcRenderer.invoke("curator:detectHardware"),
-  runAnalysis: (archiveRoot: string) => ipcRenderer.invoke("curator:runAnalysis", archiveRoot),
+  runAnalysis: (archiveRoot, settings) => ipcRenderer.invoke("curator:runAnalysis", archiveRoot, settings),
   cancelAnalysis: () => ipcRenderer.invoke("curator:cancelAnalysis"),
+  getAppPrefs: () => ipcRenderer.invoke("curator:getAppPrefs"),
+  saveAppPrefs: (prefs) => ipcRenderer.invoke("curator:saveAppPrefs", prefs),
   onEvent: (listener) => {
     const wrapped = (_: unknown, params: { kind: string; [k: string]: unknown }) => listener(params);
     ipcRenderer.on("curator:event", wrapped);

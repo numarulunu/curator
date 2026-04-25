@@ -99,8 +99,10 @@ export interface CuratorApi {
   getAnalysisSettings: () => Promise<AnalysisSettings>;
   saveAnalysisSettings: (settings: AnalysisSettings) => Promise<void>;
   detectHardware: () => Promise<HardwareProfile>;
-  runAnalysis: (archiveRoot: string) => Promise<AnalysisResult>;
+  runAnalysis: (archiveRoot: string, settings: AnalysisSettings) => Promise<AnalysisResult>;
   cancelAnalysis: () => Promise<void>;
+  getAppPrefs: () => Promise<{ archiveRoot: string | null; outputRoot: string | null }>;
+  saveAppPrefs: (prefs: { archiveRoot: string | null; outputRoot: string | null }) => Promise<void>;
 }
 
 export type AiMode = "off" | "lite" | "full";
