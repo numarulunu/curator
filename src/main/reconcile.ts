@@ -63,6 +63,11 @@ export function reconcileInterruptedSessions(
   db: Database.Database,
   stateDir: string,
 ): ReconcileSummary {
+  // Stale feature rows: failed extractions wrote rows with NULL phash (e.g. when scipy
+  // wasn't bundled in the sidecar). Wipe them on startup so the next analysis retries
+  // those files cleanly via the WHERE ift.file_id IS NULL filter.
+  db.exec("DELETE FROM image_features WHERE phash IS NULL");
+
   const sessionsDir = join(stateDir, "sessions");
   const pending = db
     .prepare("SELECT id FROM sessions WHERE completed_at IS NULL AND kind = 'apply'")

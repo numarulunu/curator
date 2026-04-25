@@ -1,10 +1,14 @@
 ﻿# -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+scipy_datas, scipy_binaries, scipy_hiddenimports = collect_all("scipy")
+
 a = Analysis(
     ["curator/__main__.py"],
     pathex=["."],
-    binaries=[],
-    datas=[],
-    hiddenimports=["curator.builtins"],
+    binaries=scipy_binaries,
+    datas=scipy_datas,
+    hiddenimports=["curator.builtins"] + scipy_hiddenimports,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
