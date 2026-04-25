@@ -26,6 +26,10 @@ export async function runAnalysis(
   const emit = opts.onProgress ?? (() => {});
   const batchSize = opts.batchSize ?? 200;
 
+  // Clear any sticky cancel flag from a previous run so this analysis isn't
+  // immediately aborted by a stale request_cancel().
+  await sidecar.call("resetCancel", {});
+
   emit({ phase: "scan" as AnalysisPhase });
   const scan = await sidecar.call<{ scanned: number; root: string }>("scan", { root: archiveRoot });
 

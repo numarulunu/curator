@@ -93,6 +93,12 @@ export function Dashboard(): JSX.Element {
       setAnalysisProgress({ phase: "hash", processed: hashed, total });
       return;
     }
+    if (event.kind === "features.progress") {
+      const processed = typeof event.processed === "number" ? event.processed : undefined;
+      const total = typeof event.total === "number" ? event.total : undefined;
+      setAnalysisProgress({ phase: "features", processed, total });
+      return;
+    }
   }, [event]);
 
   useEffect(() => {

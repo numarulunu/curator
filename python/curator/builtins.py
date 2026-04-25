@@ -350,3 +350,9 @@ def _detect_hardware_handler(_params: dict) -> dict:
 def _cancel_analysis_handler(_params: dict) -> dict:
     _pl.request_cancel()
     return {"ok": True}
+
+
+@register("resetCancel")
+def _reset_cancel_handler(_params: dict) -> dict:
+    _pl.reset_cancel()
+    return {"ok": True}

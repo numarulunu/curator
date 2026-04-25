@@ -6,6 +6,7 @@ from curator import db as _db
 from curator import pipeline as _pipeline
 from curator.features import phash as _phash
 from curator.features import quality as _quality
+from curator.rpc import emit_event
 
 
 def _face_metrics(path: str):
@@ -159,6 +160,16 @@ def extract_batch(root: Optional[str], batch_size: int = 200, ai_mode: str = "fu
     finally:
         con.close()
 
+    # snapshot total work for progress display (re-queried per emit to stay live)
+    def _emit_progress():
+        con2 = _db.connect()
+        try:
+            done = con2.execute("SELECT COUNT(*) FROM image_features WHERE phash IS NOT NULL").fetchone()[0]
+            total = con2.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        finally:
+            con2.close()
+        emit_event("features.progress", processed=done, total=total)
+
     processed = 0
     errors = []
     for fid, path in rows:
@@ -167,6 +178,7 @@ def extract_batch(root: Optional[str], batch_size: int = 200, ai_mode: str = "fu
         try:
             extract_one(fid, path, ai_mode=ai_mode)
             processed += 1
+            _emit_progress()
         except Exception as exc:
             message = str(exc)
             try:

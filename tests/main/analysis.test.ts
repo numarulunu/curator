@@ -24,6 +24,7 @@ const BASE_SETTINGS: AnalysisSettings = {
 describe("runAnalysis", () => {
   it("skips similar-photo pipeline when toggle is off", async () => {
     const sidecar = fakeSidecar({
+      resetCancel: { ok: true },
       scan: { scanned: 10, root: "C:/x" },
       hashAll: { hashed: 10, skipped: 0 },
       resolveDates: { resolved: 10 },
@@ -39,6 +40,7 @@ describe("runAnalysis", () => {
     const settings: AnalysisSettings = { ...BASE_SETTINGS, similar_photo_review: true, ai_mode: "full" };
     const phases: string[] = [];
     const sidecar = fakeSidecar({
+      resetCancel: { ok: true },
       scan: { scanned: 20, root: "C:/y" },
       hashAll: { hashed: 20, skipped: 0 },
       resolveDates: { resolved: 20 },
@@ -56,6 +58,7 @@ describe("runAnalysis", () => {
   it("skips model download when ai_mode is off even with toggle on", async () => {
     const settings: AnalysisSettings = { ...BASE_SETTINGS, similar_photo_review: true, ai_mode: "off" };
     const sidecar = fakeSidecar({
+      resetCancel: { ok: true },
       scan: { scanned: 1, root: "C:/z" },
       hashAll: { hashed: 1, skipped: 0 },
       resolveDates: { resolved: 1 },
@@ -69,6 +72,7 @@ describe("runAnalysis", () => {
     const settings: AnalysisSettings = { ...BASE_SETTINGS, similar_photo_review: true, ai_mode: "lite", preset: "safe" };
     let clusterParams: any = null;
     const sidecar = fakeSidecar({
+      resetCancel: { ok: true },
       scan: { scanned: 1, root: "C:/q" }, hashAll: { hashed: 1, skipped: 0 }, resolveDates: { resolved: 1 },
       downloadModels: { ready: [], downloaded: [] },
       extractFeatures: { processed: 0, skipped: 0, errors: [] },
@@ -82,6 +86,7 @@ describe("runAnalysis", () => {
 
   it("does not call getAnalysisSettings — settings come from caller", async () => {
     const sidecar = fakeSidecar({
+      resetCancel: { ok: true },
       scan: { scanned: 1, root: "C:/r" },
       hashAll: { hashed: 1, skipped: 0 },
       resolveDates: { resolved: 1 },

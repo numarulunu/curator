@@ -84,9 +84,30 @@ export interface DashboardSurfaceProps {
   onAnalysisCancel?: () => void;
 }
 
+function formatElapsed(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m < 60) return `${m}m ${sec}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
 export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [compactLayout, setCompactLayout] = useState<boolean>(() => (typeof window === "undefined" ? false : window.innerWidth < 1120));
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [tick, setTick] = useState<number>(Date.now());
+  useEffect(() => {
+    if (props.analysisRunning && runStartedAt === null) setRunStartedAt(Date.now());
+    if (!props.analysisRunning) setRunStartedAt(null);
+  }, [props.analysisRunning, runStartedAt]);
+  useEffect(() => {
+    if (!props.analysisRunning) return;
+    const id = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [props.analysisRunning]);
+  const elapsedS = runStartedAt ? Math.floor((tick - runStartedAt) / 1000) : 0;
   const emptyAnalysisHeadline = getEmptyAnalysisHeadline(props.result);
   const emptyAnalysisDetail = getEmptyAnalysisDetail(props.result);
 
@@ -135,12 +156,27 @@ export function DashboardSurface(props: DashboardSurfaceProps): JSX.Element {
   const liveBarPct = props.analysisRunning && props.analysisProgress?.processed !== undefined && props.analysisProgress.total
     ? Math.min(100, (props.analysisProgress.processed / props.analysisProgress.total) * 100)
     : 42;
+  let liveEtaText = "";
+  if (
+    props.analysisRunning &&
+    props.analysisProgress?.processed !== undefined &&
+    props.analysisProgress.total &&
+    props.analysisProgress.processed > 0 &&
+    elapsedS > 3
+  ) {
+    const fraction = props.analysisProgress.processed / props.analysisProgress.total;
+    if (fraction > 0 && fraction < 1) {
+      const totalEstS = elapsedS / fraction;
+      const remainingS = Math.max(0, totalEstS - elapsedS);
+      liveEtaText = ` · ETA ${formatElapsed(Math.round(remainingS))}`;
+    }
+  }
   const progressHeadline = props.analysisProgress?.note
     ? props.analysisProgress.note
-    : `${progressPhaseLabel}${progressCountText ? ` — ${progressCountText}` : ""}`;
-  const progressDetail = props.analysisProgress?.note
-    ? `${progressPhaseLabel}`
-    : "Press Cancel to stop";
+    : props.analysisRunning
+      ? `Elapsed ${formatElapsed(elapsedS)}${liveEtaText}`
+      : queueHeadline;
+  const progressDetail = "Press Cancel to stop";
   const totalEtaText = (props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0) > 0
     ? formatEta((props.analysisEtaSeconds || 0) + (props.applyEtaSeconds || 0))
     : null;
