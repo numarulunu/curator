@@ -24,6 +24,15 @@ import { useArchive } from "../state/ArchiveContext";
 import { useToast } from "../state/ToastContext";
 import { DashboardSurface, type DashboardSurfaceFilter } from "../components/dashboard/DashboardSurface";
 
+const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
+  similar_photo_review: false,
+  ai_mode: "off",
+  preset: "balanced",
+  preset_custom: {},
+  profile: "balanced",
+  profile_custom: {},
+};
+
 export function Dashboard(): JSX.Element {
   const { archiveRoot, outputRoot, pickArchive, pickOutput } = useArchive();
   const { push } = useToast();
@@ -45,7 +54,7 @@ export function Dashboard(): JSX.Element {
   const [isAnalyzed, setIsAnalyzed] = useState(false);
   const [running, setRunning] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
-  const [settings, setSettings] = useState<AnalysisSettings | null>(null);
+  const [settings, setSettings] = useState<AnalysisSettings>(DEFAULT_ANALYSIS_SETTINGS);
   const [building, setBuilding] = useState(false);
   const [applying, setApplying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +68,7 @@ export function Dashboard(): JSX.Element {
     window.curator.getVersion().then(setApp).catch(() => setApp(null));
     window.curator.getSidecarVersion().then(setSidecar).catch(() => setSidecar(null));
     window.curator.ping().then(setPing).catch(() => setPing(false));
-    window.curator.getAnalysisSettings().then(setSettings).catch(() => setSettings(null));
+    window.curator.getAnalysisSettings().then((s) => { if (s) setSettings(s); }).catch(() => {});
     void loadSessions();
   }, []);
 
@@ -325,18 +334,16 @@ export function Dashboard(): JSX.Element {
         undoingId={undoingId}
         retryingId={retryingId}
         analysisSlot={
-          settings !== null ? (
-            <>
-              <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
-              {running && (
-                <AnalysisProgressBar
-                  progress={analysisProgress}
-                  running={running}
-                  onCancel={() => { void window.curator.cancelAnalysis(); }}
-                />
-              )}
-            </>
-          ) : null
+          <>
+            <AnalysisSettingsPanel settings={settings} onChange={handleSettingsChange} />
+            {running && (
+              <AnalysisProgressBar
+                progress={analysisProgress}
+                running={running}
+                onCancel={() => { void window.curator.cancelAnalysis(); }}
+              />
+            )}
+          </>
         }
       />
 
